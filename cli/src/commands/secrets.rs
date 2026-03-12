@@ -498,8 +498,6 @@ fn is_variable_reference(line: &str) -> bool {
 const TEST_KEYWORDS: &[&str] = &[
     "example",
     "placeholder",
-    "your-",
-    "my-",
     "changeme",
     "replace_me",
     "insert_",
