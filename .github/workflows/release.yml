@@ -22,11 +22,24 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Wait for resq-tui to be available on crates.io
-        run: sleep 30
+      - name: Wait for resq-tui to index
+        run: sleep 60
 
       - name: Publish resq-cli
         run: cargo publish -p resq-cli
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish tools (parallel batch)
+        run: |
+          cargo publish -p resq-deploy-cli &
+          cargo publish -p resq-health-checker &
+          cargo publish -p resq-log-viewer &
+          cargo publish -p resq-perf-monitor &
+          cargo publish -p resq-flamegraph &
+          cargo publish -p resq-bin-explorer &
+          cargo publish -p resq-cleanup &
+          wait
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
@@ -34,5 +47,3 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
