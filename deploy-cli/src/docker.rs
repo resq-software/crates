@@ -55,11 +55,11 @@ fn compose_files(env: &str) -> Vec<String> {
     match env {
         "dev" => {
             files.extend_from_slice(&["-f".into(), "docker-compose.dev.yml".into()]);
-        },
+        }
         "prod" => {
             files.extend_from_slice(&["-f".into(), "docker-compose.prod.yml".into()]);
-        },
-        _ => {},
+        }
+        _ => {}
     }
     files
 }
@@ -91,7 +91,7 @@ pub fn get_status(project_root: &Path, env: &str) -> Vec<ContainerStatus> {
                     })
                 })
                 .collect()
-        },
+        }
         Err(_) => Vec::new(),
     }
 }
@@ -114,28 +114,28 @@ pub fn run_action(
             if let Some(svc) = service {
                 args.push(svc.into());
             }
-        },
+        }
         "up" => {
             args.extend(["up".into(), "-d".into(), "--build".into()]);
             if let Some(svc) = service {
                 args.push(svc.into());
             }
-        },
+        }
         "down" => {
             args.push("down".into());
-        },
+        }
         "restart" => {
             args.push("restart".into());
             if let Some(svc) = service {
                 args.push(svc.into());
             }
-        },
+        }
         "logs" => {
             args.extend(["logs".into(), "-f".into(), "--tail".into(), "100".into()]);
             if let Some(svc) = service {
                 args.push(svc.into());
             }
-        },
+        }
         _ => return Err(format!("Unknown action: {action}")),
     }
 
@@ -166,10 +166,10 @@ pub fn run_action(
                 "--- Process exited with {} ---",
                 status.code().unwrap_or(-1)
             ));
-        },
+        }
         Err(e) => {
             let _ = tx.send(format!("--- Process error: {e} ---"));
-        },
+        }
     });
 
     Ok(())

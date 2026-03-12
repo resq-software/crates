@@ -61,7 +61,7 @@ pub fn get_status(env: &str) -> Vec<crate::docker::ContainerStatus> {
                     })
                 })
                 .collect()
-        },
+        }
         Err(_) => Vec::new(),
     }
 }
@@ -84,7 +84,7 @@ pub fn run_action(
                 .ok_or("invalid overlay path")?
                 .to_string();
             ("kubectl", vec!["apply".into(), "-k".into(), dir_str])
-        },
+        }
         "destroy" => {
             let dir_str = overlay_dir
                 .to_str()
@@ -99,7 +99,7 @@ pub fn run_action(
                     "--ignore-not-found".into(),
                 ],
             )
-        },
+        }
         "status" => (
             "kubectl",
             vec![
@@ -123,7 +123,7 @@ pub fn run_action(
                     namespace,
                 ],
             )
-        },
+        }
         _ => return Err(format!("Unknown k8s action: {action}")),
     };
 
@@ -150,10 +150,10 @@ pub fn run_action(
                 "--- Process exited with {} ---",
                 status.code().unwrap_or(-1)
             ));
-        },
+        }
         Err(e) => {
             let _ = tx.send(format!("--- Process error: {e} ---"));
-        },
+        }
     });
 
     Ok(())

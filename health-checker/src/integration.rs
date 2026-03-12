@@ -68,7 +68,7 @@ pub(crate) fn run_test_script(script_path: &str) -> TestResult {
                 duration_ms,
                 output: combined_output,
             }
-        },
+        }
         Err(e) => TestResult {
             name,
             status: TestStatus::Failed,

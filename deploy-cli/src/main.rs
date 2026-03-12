@@ -159,13 +159,13 @@ impl App {
                 #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
                 let next = (cur as i32 + delta).rem_euclid(SERVICES.len() as i32) as usize;
                 self.service_state.select(Some(next));
-            },
+            }
             Focus::Actions => {
                 let cur = self.action_state.selected().unwrap_or(0);
                 #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
                 let next = (cur as i32 + delta).rem_euclid(self.actions().len() as i32) as usize;
                 self.action_state.select(Some(next));
-            },
+            }
         }
     }
 }
@@ -216,11 +216,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         } else {
                             Focus::Services
                         }
-                    },
+                    }
                     KeyCode::Char('e') => {
                         app.cycle_env();
                         app.refresh_status();
-                    },
+                    }
                     KeyCode::Up | KeyCode::Char('k') => app.move_selection(-1),
                     KeyCode::Down | KeyCode::Char('j') => app.move_selection(1),
                     KeyCode::Enter => {
@@ -255,8 +255,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 let _ = docker::run_action(&root, &env, &action, svc, tx_clone);
                             }
                         }
-                    },
-                    _ => {},
+                    }
+                    _ => {}
                 }
             }
         }
@@ -446,11 +446,11 @@ fn run_non_interactive(
                 if line.starts_with("--- Process") {
                     break;
                 }
-            },
+            }
             Err(mpsc::error::TryRecvError::Empty) => {
                 drop(guard);
                 std::thread::sleep(Duration::from_millis(50));
-            },
+            }
             Err(mpsc::error::TryRecvError::Disconnected) => break,
         }
     }

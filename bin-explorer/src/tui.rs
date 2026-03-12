@@ -216,11 +216,11 @@ impl App {
         {
             Ok(regex) => {
                 self.disasm_regex = Some(regex);
-            },
+            }
             Err(err) => {
                 self.disasm_regex = None;
                 self.disasm_error = Some(err.to_string());
-            },
+            }
         }
     }
 
@@ -293,7 +293,7 @@ impl App {
                     self.disassembly_scroll = 0;
                     self.disasm_match_cursor = 0;
                 }
-            },
+            }
             FocusPane::Functions => {
                 let count = self.filtered_function_indices().len();
                 if count > 0 {
@@ -301,10 +301,10 @@ impl App {
                     self.disassembly_scroll = 0;
                     self.disasm_match_cursor = 0;
                 }
-            },
+            }
             FocusPane::Disassembly => {
                 self.disassembly_scroll = self.disassembly_scroll.saturating_add(1);
-            },
+            }
         }
     }
 
@@ -315,15 +315,15 @@ impl App {
                 self.function_index = 0;
                 self.disassembly_scroll = 0;
                 self.disasm_match_cursor = 0;
-            },
+            }
             FocusPane::Functions => {
                 self.function_index = self.function_index.saturating_sub(1);
                 self.disassembly_scroll = 0;
                 self.disasm_match_cursor = 0;
-            },
+            }
             FocusPane::Disassembly => {
                 self.disassembly_scroll = self.disassembly_scroll.saturating_sub(1);
-            },
+            }
         }
     }
 }
@@ -363,45 +363,45 @@ pub(crate) fn run_tui(
                             KeyCode::Esc => {
                                 app.input_mode = InputMode::Normal;
                                 app.filter_input.clear();
-                            },
+                            }
                             KeyCode::Enter => {
                                 app.filter = app.filter_input.clone();
                                 app.input_mode = InputMode::Normal;
                                 app.function_index = 0;
                                 app.disassembly_scroll = 0;
                                 app.disasm_match_cursor = 0;
-                            },
+                            }
                             KeyCode::Backspace => {
                                 app.filter_input.pop();
-                            },
+                            }
                             KeyCode::Char(c) => {
                                 app.filter_input.push(c);
-                            },
-                            _ => {},
+                            }
+                            _ => {}
                         }
                         continue;
-                    },
+                    }
                     InputMode::DisassemblySearch => {
                         match key.code {
                             KeyCode::Esc => {
                                 app.input_mode = InputMode::Normal;
                                 app.disasm_input.clear();
-                            },
+                            }
                             KeyCode::Enter => {
                                 app.set_disasm_query(app.disasm_input.clone());
                                 app.input_mode = InputMode::Normal;
-                            },
+                            }
                             KeyCode::Backspace => {
                                 app.disasm_input.pop();
-                            },
+                            }
                             KeyCode::Char(c) => {
                                 app.disasm_input.push(c);
-                            },
-                            _ => {},
+                            }
+                            _ => {}
                         }
                         continue;
-                    },
-                    InputMode::Normal => {},
+                    }
+                    InputMode::Normal => {}
                 }
 
                 match key.code {
@@ -414,43 +414,43 @@ pub(crate) fn run_tui(
                     KeyCode::Char('/') => {
                         app.input_mode = InputMode::FunctionSearch;
                         app.filter_input = app.filter.clone();
-                    },
+                    }
                     KeyCode::Char('?') => {
                         app.input_mode = InputMode::DisassemblySearch;
                         app.disasm_input = app.disasm_query.clone();
-                    },
+                    }
                     KeyCode::Char('c') => {
                         app.filter.clear();
                         app.function_index = 0;
                         app.disassembly_scroll = 0;
                         app.disasm_match_cursor = 0;
-                    },
+                    }
                     KeyCode::Down | KeyCode::Char('j') => app.move_down(),
                     KeyCode::Up | KeyCode::Char('k') => app.move_up(),
                     KeyCode::PageDown => {
                         app.disassembly_scroll = app.disassembly_scroll.saturating_add(12);
-                    },
+                    }
                     KeyCode::PageUp => {
                         app.disassembly_scroll = app.disassembly_scroll.saturating_sub(12);
-                    },
+                    }
                     KeyCode::Home => {
                         app.disassembly_scroll = 0;
-                    },
+                    }
                     KeyCode::Char('n') => {
                         if app.focus == FocusPane::Disassembly && app.disasm_regex.is_some() {
                             app.jump_disassembly_match(true);
                         } else {
                             app.jump_function_match(true);
                         }
-                    },
+                    }
                     KeyCode::Char('N') => {
                         if app.focus == FocusPane::Disassembly && app.disasm_regex.is_some() {
                             app.jump_disassembly_match(false);
                         } else {
                             app.jump_function_match(false);
                         }
-                    },
-                    _ => {},
+                    }
+                    _ => {}
                 }
             }
         }
@@ -772,7 +772,7 @@ fn draw_disassembly(frame: &mut Frame, area: Rect, app: &App) {
                 20,
                 &app.theme,
             );
-        },
+        }
         InputMode::DisassemblySearch => {
             draw_popup(
                 frame,
@@ -790,8 +790,8 @@ fn draw_disassembly(frame: &mut Frame, area: Rect, app: &App) {
                 25,
                 &app.theme,
             );
-        },
-        InputMode::Normal => {},
+        }
+        InputMode::Normal => {}
     }
 }
 

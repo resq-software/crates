@@ -56,7 +56,7 @@ pub fn parse_gitignore(root: &Path) -> Vec<String> {
         Ok(c) => c,
         Err(_) => {
             return FALLBACK_EXCLUDES.iter().map(|s| (*s).to_string()).collect();
-        },
+        }
     };
 
     let mut seen = HashSet::new();

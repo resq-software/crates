@@ -98,7 +98,7 @@ impl App {
                 } else {
                     i + 1
                 }
-            },
+            }
             None => 0,
         };
         self.table_state.select(Some(i));
@@ -115,7 +115,7 @@ impl App {
                 } else {
                     i - 1
                 }
-            },
+            }
             None => 0,
         };
         self.table_state.select(Some(i));

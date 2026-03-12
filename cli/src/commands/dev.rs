@@ -110,7 +110,7 @@ fn run_upgrade(args: UpgradeArgs) -> Result<()> {
             let _ = upgrade_js(&root);
             let _ = upgrade_cpp(&root);
             let _ = upgrade_csharp(&root);
-        },
+        }
         _ => anyhow::bail!("Unknown silo: {silo}. Valid: python, rust, js, cpp, csharp, nix, all"),
     }
 

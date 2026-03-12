@@ -365,7 +365,7 @@ pub async fn run(args: CostArgs) -> Result<()> {
             ProjectType::Rust => tokio::spawn(async move { get_crate_size(dep, sem).await }),
             ProjectType::Python => {
                 tokio::spawn(async move { get_pypi_package_size(dep, sem).await })
-            },
+            }
         };
         tasks.push(task);
     }

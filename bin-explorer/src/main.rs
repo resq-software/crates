@@ -289,7 +289,7 @@ fn analyze_dir(
                 Ok(cached) => {
                     cache_hits += usize::from(cached.cache_hit);
                     reports.push(cached.report);
-                },
+                }
                 Err(err) => issues.push(AnalyzeIssue {
                     path,
                     error: err.to_string(),

@@ -198,18 +198,18 @@ impl App {
                             self.status = Some(status);
                             self.current_error = None;
                             self.success_count += 1;
-                        },
+                        }
                         Err(e) => {
                             self.record_error(format!("Parse error: {e}"));
-                        },
+                        }
                     }
                 } else {
                     self.record_error(format!("HTTP {}", resp.status()));
                 }
-            },
+            }
             Err(e) => {
                 self.record_error(format!("Connection error: {e}"));
-            },
+            }
         }
         self.last_fetch = Instant::now();
     }
@@ -867,13 +867,13 @@ fn main() -> Result<()> {
                             if key.modifiers.contains(event::KeyModifiers::CONTROL) =>
                         {
                             break
-                        },
+                        }
                         KeyCode::Char('r') => app.reset(),
                         KeyCode::Char('p') => app.toggle_pause(),
                         KeyCode::Char('+' | '=') => app.increase_refresh_rate(),
                         KeyCode::Char('-' | '_') => app.decrease_refresh_rate(),
                         KeyCode::Char('h') => app.toggle_help(),
-                        _ => {},
+                        _ => {}
                     }
                 }
             }

@@ -190,7 +190,7 @@ async fn check_service(client: &Client, name: String, url: String) -> ServiceHea
                             latency_ms,
                             error: None,
                         }
-                    },
+                    }
                     Err(_) => {
                         // Response was 200 but not JSON - still consider healthy
                         ServiceHealth {
@@ -200,7 +200,7 @@ async fn check_service(client: &Client, name: String, url: String) -> ServiceHea
                             latency_ms,
                             error: None,
                         }
-                    },
+                    }
                 }
             } else {
                 ServiceHealth {
@@ -211,7 +211,7 @@ async fn check_service(client: &Client, name: String, url: String) -> ServiceHea
                     error: Some(format!("HTTP {}", resp.status())),
                 }
             }
-        },
+        }
         Err(e) => {
             let latency_ms = start.elapsed().as_millis() as u64;
             let error_msg = if e.is_connect() {
@@ -229,7 +229,7 @@ async fn check_service(client: &Client, name: String, url: String) -> ServiceHea
                 latency_ms,
                 error: Some(error_msg),
             }
-        },
+        }
     }
 }
 
@@ -277,7 +277,7 @@ async fn check_neo_rpc(
                     error: Some(format!("HTTP {}", resp.status())),
                 }
             }
-        },
+        }
         Err(e) => {
             let latency_ms = start.elapsed().as_millis() as u64;
             ServiceHealth {
@@ -293,7 +293,7 @@ async fn check_neo_rpc(
                     e.to_string()
                 }),
             }
-        },
+        }
     }
 }
 

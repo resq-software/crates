@@ -224,14 +224,14 @@ fn bump_version(current: &str, bump: &str) -> Result<String> {
             major += 1;
             minor = 0;
             patch = 0;
-        },
+        }
         "minor" => {
             minor += 1;
             patch = 0;
-        },
+        }
         _ => {
             patch += 1;
-        },
+        }
     }
 
     Ok(format!("{major}.{minor}.{patch}"))

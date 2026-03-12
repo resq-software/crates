@@ -62,9 +62,9 @@ pub(crate) fn spawn_docker_source(
                     if tx.send(entry).is_err() {
                         break;
                     }
-                },
+                }
                 Err(_) => break,
-                _ => {},
+                _ => {}
             }
         }
         let _ = child.kill();
@@ -99,7 +99,7 @@ pub(crate) fn spawn_file_source(
                     raw: String::new(),
                 });
                 return;
-            },
+            }
         };
 
         let reader = std::io::BufReader::new(file);
@@ -110,9 +110,9 @@ pub(crate) fn spawn_file_source(
                     if tx.send(entry).is_err() {
                         return;
                     }
-                },
+                }
                 Err(_) => return,
-                _ => {},
+                _ => {}
             }
         }
     });

@@ -179,7 +179,7 @@ impl App {
                 if let Some(s) = self.steps.get_mut(i) {
                     s.status = StepStatus::Running;
                 }
-            },
+            }
             StepMsg::Finished(i, status, detail, sub_lines, elapsed) => {
                 if let Some(s) = self.steps.get_mut(i) {
                     s.status = status;
@@ -187,7 +187,7 @@ impl App {
                     s.sub_lines = sub_lines;
                     s.elapsed = Some(elapsed);
                 }
-            },
+            }
             StepMsg::Output(i, line) => {
                 if let Some(s) = self.steps.get_mut(i) {
                     if s.sub_lines.len() > 10 {
@@ -195,16 +195,16 @@ impl App {
                     }
                     s.sub_lines.push(line);
                 }
-            },
+            }
             StepMsg::PromptChangeset(i) => {
                 self.prompting_idx = Some(i);
                 if let Some(s) = self.steps.get_mut(i) {
                     s.status = StepStatus::Running;
                 }
-            },
+            }
             StepMsg::AllDone => {
                 self.done = true;
-            },
+            }
         }
     }
 
@@ -219,7 +219,7 @@ impl App {
                 StepStatus::Fail => f += 1,
                 StepStatus::Warn => w += 1,
                 StepStatus::Skip => s += 1,
-                _ => {},
+                _ => {}
             }
         }
         (p, f, w, s)
@@ -1154,29 +1154,29 @@ pub async fn run(args: PreCommitArgs) -> Result<()> {
                             KeyCode::Char(c) => app.changeset_message.push(c),
                             KeyCode::Backspace => {
                                 app.changeset_message.pop();
-                            },
+                            }
                             KeyCode::Enter => app.entering_message = false,
                             KeyCode::Esc => {
                                 app.entering_message = false;
                                 app.changeset_message.clear();
-                            },
-                            _ => {},
+                            }
+                            _ => {}
                         }
                     } else {
                         match key.code {
                             KeyCode::Left => {
                                 app.changeset_selector = app.changeset_selector.saturating_sub(1);
-                            },
+                            }
                             KeyCode::Right => {
                                 if app.changeset_selector < 3 {
                                     app.changeset_selector += 1;
                                 }
-                            },
+                            }
                             KeyCode::Char('m') => {
                                 if app.changeset_selector > 0 {
                                     app.entering_message = true;
                                 }
-                            },
+                            }
                             KeyCode::Enter => {
                                 let resp = match app.changeset_selector {
                                     1 => ChangesetResponse::Patch,
@@ -1203,12 +1203,12 @@ pub async fn run(args: PreCommitArgs) -> Result<()> {
                                         .status();
                                 }
                                 let _ = res_tx.send(resp);
-                            },
+                            }
                             KeyCode::Esc => {
                                 app.aborted = true;
                                 break;
-                            },
-                            _ => {},
+                            }
+                            _ => {}
                         }
                     }
                     continue;
@@ -1217,11 +1217,11 @@ pub async fn run(args: PreCommitArgs) -> Result<()> {
                     KeyCode::Char('q') | KeyCode::Esc => {
                         app.aborted = true;
                         break;
-                    },
+                    }
                     KeyCode::Enter if app.done => break,
                     KeyCode::Up => app.scroll_offset = app.scroll_offset.saturating_sub(1),
                     KeyCode::Down => app.scroll_offset = app.scroll_offset.saturating_add(1),
-                    _ => {},
+                    _ => {}
                 }
             }
         }

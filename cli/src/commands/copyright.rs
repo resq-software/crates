@@ -229,7 +229,7 @@ fn get_comment_style(path: &Path, content: &str) -> Option<&'static CommentStyle
         | "cc" | "cpp" | "h" | "hpp" | "cs" | "java" | "kt" | "kts" | "swift" | "m" | "mm"
         | "go" | "php" | "dart" | "scala" | "groovy" | "gradle" | "proto" | "zig" | "v" | "sv" => {
             Some(&C_STYLE_BLOCK)
-        },
+        }
 
         // Rust — non-doc block comment to avoid conflicting with //! inner docs
         "rs" => Some(&RUST_BLOCK),
@@ -276,7 +276,7 @@ fn get_comment_style(path: &Path, content: &str) -> Option<&'static CommentStyle
             } else {
                 None
             }
-        },
+        }
     }
 }
 
@@ -308,7 +308,7 @@ fn build_header(style: &CommentStyle, license_text: &str) -> String {
                 header.push('\n');
             }
             header.push('\n');
-        },
+        }
         CommentKind::Line => {
             for line in &lines {
                 if line.is_empty() {
@@ -321,7 +321,7 @@ fn build_header(style: &CommentStyle, license_text: &str) -> String {
                 header.push('\n');
             }
             header.push('\n');
-        },
+        }
     }
     header
 }
@@ -632,7 +632,7 @@ fn collect_files_from_globs(patterns: &[String], verbose: bool) -> Result<Vec<Pa
         for entry in glob(pattern).context("Failed to read glob pattern")? {
             match entry {
                 Ok(path) if path.is_file() => files.push(path),
-                _ => {},
+                _ => {}
             }
         }
     }
@@ -768,7 +768,7 @@ fn process_file(
             }
             stats.skipped += 1;
             return Ok(());
-        },
+        }
     };
 
     if content.trim().is_empty() || is_binary(&content) {
@@ -874,11 +874,11 @@ fn process_file(
                 eprintln!("Updated: {}", path.display());
             }
             stats.updated += 1;
-        },
+        }
         Err(e) => {
             eprintln!("Error writing {}: {e}", path.display());
             stats.errors += 1;
-        },
+        }
     }
     Ok(())
 }

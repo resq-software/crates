@@ -168,15 +168,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match args.source.as_str() {
         "docker" => {
             sources::spawn_docker_source(project_root, args.service.clone(), tx)?;
-        },
+        }
         "file" => {
             let path = args.path.map_or_else(|| PathBuf::from("."), PathBuf::from);
             sources::spawn_file_source(path, tx)?;
-        },
+        }
         other => {
             eprintln!("Unknown source: {other}. Use 'docker' or 'file'.");
             std::process::exit(1);
-        },
+        }
     }
 
     enable_raw_mode()?;
@@ -201,55 +201,55 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         KeyCode::Enter => {
                             app.search_query = app.search_input.clone();
                             app.input_mode = InputMode::Normal;
-                        },
+                        }
                         KeyCode::Esc => {
                             app.search_input.clear();
                             app.input_mode = InputMode::Normal;
-                        },
+                        }
                         KeyCode::Backspace => {
                             app.search_input.pop();
-                        },
+                        }
                         KeyCode::Char(c) => {
                             app.search_input.push(c);
-                        },
-                        _ => {},
+                        }
+                        _ => {}
                     },
                     InputMode::Normal => match key.code {
                         KeyCode::Char('q') | KeyCode::Esc => break,
                         KeyCode::Char('/') => {
                             app.input_mode = InputMode::Search;
                             app.search_input = app.search_query.clone();
-                        },
+                        }
                         KeyCode::Char('f') => app.cycle_level_filter(),
                         KeyCode::Char('c') => {
                             app.logs.clear();
                             app.scroll_offset = 0;
-                        },
+                        }
                         KeyCode::Char('g') => {
                             app.auto_scroll = true;
                             app.scroll_offset = 0;
-                        },
+                        }
                         KeyCode::Up => {
                             app.auto_scroll = false;
                             app.scroll_offset += 1;
-                        },
+                        }
                         KeyCode::Down => {
                             app.scroll_offset = app.scroll_offset.saturating_sub(1);
                             if app.scroll_offset == 0 {
                                 app.auto_scroll = true;
                             }
-                        },
+                        }
                         KeyCode::PageUp => {
                             app.auto_scroll = false;
                             app.scroll_offset += 20;
-                        },
+                        }
                         KeyCode::PageDown => {
                             app.scroll_offset = app.scroll_offset.saturating_sub(20);
                             if app.scroll_offset == 0 {
                                 app.auto_scroll = true;
                             }
-                        },
-                        _ => {},
+                        }
+                        _ => {}
                     },
                 }
             }

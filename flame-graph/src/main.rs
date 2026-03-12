@@ -151,12 +151,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let i = app.list_state.selected().unwrap_or(0);
                         app.list_state
                             .select(Some((i + 1).min(app.services.len() - 1)));
-                    },
+                    }
                     KeyCode::Up | KeyCode::Char('k') => {
                         let i = app.list_state.selected().unwrap_or(0);
                         app.list_state.select(Some(i.saturating_sub(1)));
-                    },
-                    _ => {},
+                    }
+                    _ => {}
                 }
             }
         }

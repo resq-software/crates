@@ -254,15 +254,15 @@ impl BinaryAnalyzer {
                                         .or_insert(instructions);
                                     backend_by_name.entry(name).or_insert("objdump".to_string());
                                 }
-                            },
+                            }
                             Err(obj_err) => {
                                 disassembly_attempts.push(format!(
                                     "objdump: unavailable while filling missing ({obj_err})"
                                 ));
-                            },
+                            }
                         }
                     }
-                },
+                }
                 Err(err) => {
                     disassembly_attempts.push(format!("capstone: unavailable ({err})"));
                     match ObjdumpDisassembler::new().and_then(|d| {
@@ -278,15 +278,15 @@ impl BinaryAnalyzer {
                                 backend_by_name.insert(name.clone(), "objdump".to_string());
                                 instructions_by_name.insert(name, instructions);
                             }
-                        },
+                        }
                         Err(obj_err) => {
                             disassembly_attempts.push(format!("objdump: unavailable ({obj_err})"));
                             warnings.push(format!(
                                 "disassembly unavailable: capstone failed ({err}); objdump failed ({obj_err})"
                             ));
-                        },
+                        }
                     }
-                },
+                }
             }
         }
 
@@ -321,7 +321,7 @@ impl BinaryAnalyzer {
                 match backend.as_str() {
                     "capstone" => coverage.capstone_functions += 1,
                     "objdump" => coverage.objdump_functions += 1,
-                    _ => {},
+                    _ => {}
                 }
             } else {
                 coverage.missing_functions += 1;
@@ -426,7 +426,7 @@ impl CapstoneDisassembler {
                 .context("capstone init failed for aarch64")?,
             other => {
                 return Err(anyhow!("capstone unsupported architecture: {other:?}"));
-            },
+            }
         };
 
         let regions = object

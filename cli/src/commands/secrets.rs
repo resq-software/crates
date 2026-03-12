@@ -121,7 +121,7 @@ fn charset_entropy(s: &str, charset: EntropyCharset) -> f64 {
         EntropyCharset::Hex => |b| b.is_ascii_hexdigit(),
         EntropyCharset::Base64 => {
             |b| matches!(b, b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'+' | b'/' | b'=')
-        },
+        }
         EntropyCharset::Alphanumeric => |b| matches!(b, b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9'),
     };
 

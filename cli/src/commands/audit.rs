@@ -166,7 +166,7 @@ fn run_osv_scanner(root: &Path, args: &AuditArgs, failures: &mut Vec<String>) {
             println!("  ❌ Failed to run: {e}");
             failures.push(format!("osv-scanner (exec: {e})"));
             return;
-        },
+        }
         Ok(mut child) => {
             // Filter stdout: suppress OSV scanner's scan-walk progress lines
             // (emitted on stdout mixed with the vulnerability table).
@@ -178,7 +178,7 @@ fn run_osv_scanner(root: &Path, args: &AuditArgs, failures: &mut Vec<String>) {
                 }
             }
             child.wait().map(|s| s.success()).unwrap_or(false)
-        },
+        }
     };
 
     if success {
@@ -347,7 +347,7 @@ fn run_react_doctor(root: &Path, args: &AuditArgs, failures: &mut Vec<String>) {
                 "\n  ✅ Health score: {s}/100 (threshold: {}).",
                 args.react_min_score
             );
-        },
+        }
         Some(s) => {
             println!(
                 "\n  ❌ Health score: {s}/100 — below threshold of {}.",
@@ -357,10 +357,10 @@ fn run_react_doctor(root: &Path, args: &AuditArgs, failures: &mut Vec<String>) {
                 "react-doctor: score {s} < {}",
                 args.react_min_score
             ));
-        },
+        }
         None => {
             println!("\n  ⚠️  Could not parse react-doctor score — skipping threshold check.");
-        },
+        }
     }
 }
 

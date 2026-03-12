@@ -176,19 +176,19 @@ async fn main() -> Result<()> {
                         if app.dry_run {
                             break;
                         }
-                    },
+                    }
                     KeyCode::Down | KeyCode::Char('j') => {
                         let i = app.list_state.selected().unwrap_or(0);
                         if !app.entries.is_empty() {
                             app.list_state
                                 .select(Some((i + 1).min(app.entries.len() - 1)));
                         }
-                    },
+                    }
                     KeyCode::Up | KeyCode::Char('k') => {
                         let i = app.list_state.selected().unwrap_or(0);
                         app.list_state.select(Some(i.saturating_sub(1)));
-                    },
-                    _ => {},
+                    }
+                    _ => {}
                 }
             }
         }
