@@ -13,11 +13,18 @@
 # limitations under the License.
 
 [package]
-name = "cleanup"
-version = "0.1.0"
-edition = "2021"
+name = "resq-cleanup"
+version.workspace = true
+edition.workspace = true
 license.workspace = true
-publish = false
+description = ".gitignore-aware workspace cleaner for ResQ development"
+repository.workspace = true
+keywords = ["cleanup", "workspace", "gitignore", "resq", "development"]
+categories = ["command-line-interface", "command-line-utilities"]
+
+[[bin]]
+name = "resq-clean"
+path = "src/main.rs"
 
 [dependencies]
 ignore = "0.4"
@@ -30,7 +37,7 @@ ratatui = { workspace = true }
 crossterm = { workspace = true }
 
 # Shared TUI components
-resq-tui = { path = "../../libs/rust/resq-tui" }
+resq-tui = { path = "../resq-tui", version = "0.1" }
 
 [lints]
 workspace = true

@@ -13,15 +13,17 @@
 # limitations under the License.
 
 [package]
-name = "deploy-cli"
-version = "0.1.0"
-edition = "2021"
-description = "Interactive deployment TUI for ResQ infrastructure"
-authors = ["ResQ Team"]
-license = "Apache-2.0"
+name = "resq-deploy-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Interactive deployment manager for ResQ environments — Docker Compose and Kubernetes TUI"
+repository.workspace = true
+keywords = ["tui", "deploy", "kubernetes", "docker", "resq"]
+categories = ["command-line-interface", "command-line-utilities"]
 
 [[bin]]
-name = "deploy-cli"
+name = "resq-deploy"
 path = "src/main.rs"
 
 [dependencies]
@@ -43,7 +45,7 @@ clap = { version = "4", features = ["derive"] }
 chrono = "0.4"
 
 # Shared TUI components
-resq-tui = { path = "../../libs/rust/resq-tui" }
+resq-tui = { path = "../resq-tui", version = "0.1" }
 
 # [profile.release]
 

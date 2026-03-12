@@ -13,12 +13,18 @@
 # limitations under the License.
 
 [package]
-name = "health-checker"
-version = "0.1.0"
-edition = "2021"
-description = "Health check dashboard for ResQ services"
-authors = ["ResQ Team"]
-license = "Apache-2.0"
+name = "resq-health-checker"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Service health diagnostic dashboard for ResQ platform"
+repository.workspace = true
+keywords = ["tui", "health", "monitoring", "resq", "diagnostics"]
+categories = ["command-line-interface", "command-line-utilities"]
+
+[[bin]]
+name = "resq-health"
+path = "src/main.rs"
 
 [dependencies]
 # TUI
@@ -51,7 +57,7 @@ walkdir = { workspace = true }
 chrono = { workspace = true }
 
 # Shared TUI components
-resq-tui = { path = "../../libs/rust/resq-tui" }
+resq-tui = { path = "../resq-tui", version = "0.1" }
 
 [lints]
 workspace = true

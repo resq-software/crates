@@ -13,16 +13,21 @@
 # limitations under the License.
 
 [package]
-name = "bin-explorer"
-version = "0.1.0"
-edition = "2021"
-description = "Binary and machine-code analyzer for ResQ"
-authors = ["ResQ Team"]
-license = "Apache-2.0"
-publish = false
+name = "resq-bin-explorer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Binary and machine-code analyzer for ResQ binaries"
+repository.workspace = true
+keywords = ["binary", "analysis", "disassembly", "elf", "resq"]
+categories = ["command-line-interface", "command-line-utilities"]
+
+[lib]
+name = "bin_explorer"
+path = "src/lib.rs"
 
 [[bin]]
-name = "bin-explorer"
+name = "resq-bin"
 path = "src/main.rs"
 
 [dependencies]
@@ -33,7 +38,7 @@ serde_json = { workspace = true }
 object = "0.38"
 ratatui = { workspace = true }
 crossterm = { workspace = true }
-resq-tui = { path = "../../libs/rust/resq-tui" }
+resq-tui = { path = "../resq-tui", version = "0.1" }
 regex = { workspace = true }
 toml = { workspace = true }
 crc32fast = "1.5"

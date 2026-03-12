@@ -13,15 +13,17 @@
 # limitations under the License.
 
 [package]
-name = "perf-monitor"
-version = "0.1.0"
-edition = "2021"
-description = "Real-time performance monitoring TUI for ResQ services"
-authors = ["ResQ Team"]
-license = "Apache-2.0"
+name = "resq-perf-monitor"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Real-time CPU and memory performance TUI for ResQ platform"
+repository.workspace = true
+keywords = ["tui", "performance", "monitoring", "cpu", "resq"]
+categories = ["command-line-interface", "command-line-utilities"]
 
 [[bin]]
-name = "perf-monitor"
+name = "resq-perf"
 path = "src/main.rs"
 
 [dependencies]
@@ -52,7 +54,7 @@ procfs = "0.18"
 addr2line = "0.26"
 
 # Shared TUI components
-resq-tui = { path = "../../libs/rust/resq-tui" }
+resq-tui = { path = "../resq-tui", version = "0.1" }
 
 [lints]
 workspace = true

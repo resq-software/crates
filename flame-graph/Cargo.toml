@@ -13,16 +13,17 @@
 # limitations under the License.
 
 [package]
-name = "flame-graph"
-description = "Generate interactive SVG flame graphs from CPU profiles"
+name = "resq-flamegraph"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-authors.workspace = true
+description = "SVG CPU flame graph profiler for ResQ services"
 repository.workspace = true
+keywords = ["profiling", "flamegraph", "performance", "svg", "resq"]
+categories = ["command-line-interface", "command-line-utilities"]
 
 [[bin]]
-name = "flame-graph"
+name = "resq-flame"
 path = "src/main.rs"
 
 [dependencies]
@@ -56,7 +57,7 @@ ratatui = { workspace = true }
 crossterm = { workspace = true }
 
 # Shared TUI components
-resq-tui = { path = "../../libs/rust/resq-tui" }
+resq-tui = { path = "../resq-tui", version = "0.1" }
 
 # [profile.release]
 # opt-level = 3

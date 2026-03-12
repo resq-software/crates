@@ -13,15 +13,17 @@
 # limitations under the License.
 
 [package]
-name = "log-viewer"
-version = "0.1.0"
-edition = "2021"
-description = "Aggregated log viewer TUI for ResQ services"
-authors = ["ResQ Team"]
-license = "Apache-2.0"
+name = "resq-log-viewer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Multi-source log aggregator and viewer for ResQ services"
+repository.workspace = true
+keywords = ["tui", "logs", "aggregator", "resq", "viewer"]
+categories = ["command-line-interface", "command-line-utilities"]
 
 [[bin]]
-name = "log-viewer"
+name = "resq-logs"
 path = "src/main.rs"
 
 [dependencies]
@@ -46,7 +48,7 @@ chrono = { version = "0.4", features = ["serde"] }
 regex = "1"
 
 # Shared TUI components
-resq-tui = { path = "../../libs/rust/resq-tui" }
+resq-tui = { path = "../resq-tui", version = "0.1" }
 
 # [profile.release]
 
