@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1](https://github.com/resq-software/cli/compare/resq-perf-monitor-v0.1.0...resq-perf-monitor-v0.1.1) - 2026-03-13
+
+### Other
+
+- release v0.1.0
+
 ## [0.1.0](https://github.com/resq-software/cli/releases/tag/resq-perf-monitor-v0.1.0) - 2026-03-13
 
 ### Added
