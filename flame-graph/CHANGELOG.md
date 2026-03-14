@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1](https://github.com/resq-software/cli/compare/resq-flamegraph-v0.1.0...resq-flamegraph-v0.1.1) - 2026-03-13
+
+### Added
+
+- add 7 ResQ tools as workspace members with crates.io metadata
+
+### Other
+
+- release v0.1.0
+- apply rustfmt to all workspace crates
+- copy 7 tools from monorepo
+
 ## [0.1.0](https://github.com/resq-software/cli/releases/tag/resq-flamegraph-v0.1.0) - 2026-03-13
 
 ### Added
