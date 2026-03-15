@@ -79,8 +79,10 @@ jobs:
 
       - name: Run Gitleaks
         run: |
+          TAG=$(curl -sSfL https://api.github.com/repos/gitleaks/gitleaks/releases/latest | jq -r .tag_name)
+          VERSION=${TAG#v}
           OS=$(uname -s | tr '[:upper:]' '[:lower:]')
           ARCH=$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/')
-          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_${OS}_${ARCH}.tar.gz" \
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/${TAG}/gitleaks_${VERSION}_${OS}_${ARCH}.tar.gz" \
             | tar -xz gitleaks
           ./gitleaks detect --source . --redact -v
