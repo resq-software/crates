@@ -42,7 +42,7 @@ resq-tui = { path = "../resq-tui", version = "0.1" }
 regex = { workspace = true }
 toml = { workspace = true }
 crc32fast = "1.5"
-capstone = "0.12"
+capstone = "0.14"
 
 [dev-dependencies]
 tempfile = { workspace = true }
