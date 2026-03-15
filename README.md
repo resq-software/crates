@@ -13,17 +13,17 @@ A unified Rust-based CLI and TUI toolchain designed to streamline developer work
 The `resq` ecosystem is a high-performance Rust monorepo. It distinguishes between the end-user CLI experience (the `resq` binary) and the internal library architecture (`resq-tui`) which powers consistent terminal interfaces across all tooling.
 
 ```mermaid
-graph TD
+flowchart TD
     subgraph CLI_Workspace
-        CLI[resq-cli]
-        TUI_LIB[resq-tui]
+        CLI["resq-cli"]
+        TUI_LIB["resq-tui"]
     end
 
     subgraph Tool_Modules
-        Health[resq-health]
-        Deploy[resq-deploy]
-        Explorer[bin-explorer]
-        Perf[perf-monitor]
+        Health["resq-health"]
+        Deploy["resq-deploy"]
+        Explorer["bin-explorer"]
+        Perf["perf-monitor"]
     end
 
     CLI --> TUI_LIB
@@ -42,6 +42,16 @@ graph TD
 *   **Orchestration:** TUI-based Kubernetes and Docker Compose deployment management.
 *   **Developer Productivity:** Automated copyright header enforcement, tree-shaking, and `.gitignore`-aware workspace cleaning.
 *   **Unified TUI Library:** Shared component library (`resq-tui`) ensuring consistent UX across the entire toolchain.
+
+---
+
+## Architecture
+
+`resq-cli` is architected as a workspace of modular binaries sharing a common UI core.
+
+- **`resq-cli` (Entry Point):** The primary binary, utilizing `clap` v4 for command routing. It acts as a lightweight wrapper that dispatches to underlying module binaries.
+- **`resq-tui` (Core Library):** A shared crate built on `ratatui`. It abstracts complex UI components (spinners, tables, headers, footers), ensuring all `resq-*` binaries maintain an identical UX.
+- **Modular Binaries:** Tools like `resq-health`, `resq-deploy`, and `bin-explorer` function as standalone tools while remaining tightly coupled via shared workspace dependency management.
 
 ---
 
@@ -90,20 +100,22 @@ If you encounter environment issues within `nix develop`:
 
 ## Usage
 
-### Interactive Pre-commit Audit
-```sh
-resq pre-commit
-```
+The `resq` binary acts as an orchestrator for all sub-tools.
 
-### Service Health Monitoring
-```sh
-resq health
-```
+### Security & Audit
+- `resq audit`: Run full OSV/dependency security audit.
+- `resq secrets`: Scan workspace for credentials.
+- `resq pre-commit`: Run comprehensive pre-commit check (audit, headers, secrets).
 
-### Binary Analysis
-```sh
-resq asm --file ./path/to/binary
-```
+### Deployment & Health
+- `resq deploy --env prod --k8s`: Launch Kubernetes deployment TUI.
+- `resq health`: Launch service health monitoring dashboard.
+- `resq logs`: Aggregate and stream service logs.
+
+### Maintenance & Analysis
+- `resq asm --file ./path/to/binary`: Analyze binary machine code.
+- `resq clean`: Run interactive workspace cleaner.
+- `resq copyright`: Enforce Apache-2.0 license headers.
 
 ---
 
