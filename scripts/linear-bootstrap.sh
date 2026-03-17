@@ -207,22 +207,59 @@ json_equals() {
     [[ "$(jq -cS . <<<"$left")" == "$(jq -cS . <<<"$right")" ]]
 }
 
+require_unique_match() {
+    local output_var="$1"
+    local matches_json="$2"
+    local not_found_message="$3"
+    local ambiguous_message="$4"
+    local match_count
+
+    match_count="$(jq 'length' <<<"$matches_json")"
+    case "$match_count" in
+        0) die "$not_found_message" ;;
+        1) printf -v "$output_var" '%s' "$(jq -c '.[0]' <<<"$matches_json")" ;;
+        *) die "$ambiguous_message" ;;
+    esac
+}
+
+optional_unique_match() {
+    local output_var="$1"
+    local matches_json="$2"
+    local ambiguous_message="$3"
+    local match_count
+
+    match_count="$(jq 'length' <<<"$matches_json")"
+    case "$match_count" in
+        0) printf -v "$output_var" '%s' "" ;;
+        1) printf -v "$output_var" '%s' "$(jq -c '.[0]' <<<"$matches_json")" ;;
+        *) die "$ambiguous_message" ;;
+    esac
+}
+
 build_plan() {
     local state_json="$1"
     local actions='[]'
-    local team_key team_node team_id workspace_templates team_templates
+    local team_key team_node team_id workspace_templates team_templates team_nodes_json
 
     team_key="$(jq -r '.team.key' "$CONFIG_PATH")"
-    team_node="$(jq -c --arg key "$team_key" '.data.teams.nodes[] | select(.key == $key)' <<<"$state_json" | head -n1)"
-    [[ -n "${team_node}" ]] || die "Could not find Linear team with key '${team_key}'"
+    team_nodes_json="$(jq -c --arg key "$team_key" '[.data.teams.nodes[] | select(.key == $key)]' <<<"$state_json")"
+    require_unique_match \
+        team_node \
+        "$team_nodes_json" \
+        "Could not find Linear team with key '${team_key}'" \
+        "Ambiguous match: found multiple teams with key '${team_key}'"
 
     team_id="$(jq -r '.id' <<<"$team_node")"
 
     while IFS= read -r desired_label; do
         [[ -n "$desired_label" ]] || continue
-        local name existing current desired_input update_input
+        local name existing current desired_input update_input existing_labels_json
         name="$(jq -r '.name' <<<"$desired_label")"
-        existing="$(jq -c --arg name "$name" '.labels.nodes[] | select(.name == $name)' <<<"$team_node" | head -n1)"
+        existing_labels_json="$(jq -c --arg name "$name" '[.labels.nodes[] | select(.name == $name)]' <<<"$team_node")"
+        optional_unique_match \
+            existing \
+            "$existing_labels_json" \
+            "Ambiguous match: found multiple labels named '${name}' in team '${team_key}'"
         desired_input="$(jq -c --arg team_id "$team_id" '
             {
               teamId: $team_id,
@@ -255,11 +292,15 @@ build_plan() {
 
     while IFS= read -r desired_state; do
         [[ -n "$desired_state" ]] || continue
-        local state_name state_type existing_state create_input current_state update_state
+        local state_name state_type existing_state create_input current_state update_state existing_states_json
         state_name="$(jq -r '.name' <<<"$desired_state")"
         state_type="$(jq -r '.type' <<<"$desired_state")"
-        existing_state="$(jq -c --arg name "$state_name" --arg type "$state_type" \
-            '.states.nodes[] | select(.name == $name and .type == $type)' <<<"$team_node" | head -n1)"
+        existing_states_json="$(jq -c --arg name "$state_name" --arg type "$state_type" \
+            '[.states.nodes[] | select(.name == $name and .type == $type)]' <<<"$team_node")"
+        optional_unique_match \
+            existing_state \
+            "$existing_states_json" \
+            "Ambiguous match: found multiple workflow states named '${state_name}' of type '${state_type}' in team '${team_key}'"
         create_input="$(jq -c --arg team_id "$team_id" '
             {
               teamId: $team_id,
@@ -315,11 +356,15 @@ build_plan() {
 
     while IFS= read -r desired_template; do
         [[ -n "$desired_template" ]] || continue
-        local template_name template_type existing_template create_template update_template
+        local template_name template_type existing_template create_template update_template existing_templates_json
         template_name="$(jq -r '.name' <<<"$desired_template")"
         template_type="$(jq -r '.type' <<<"$desired_template")"
-        existing_template="$(jq -c --arg name "$template_name" --arg type "$template_type" \
-            '.[] | select(.name == $name and .type == $type and (.team == null))' <<<"$workspace_templates" | head -n1)"
+        existing_templates_json="$(jq -c --arg name "$template_name" --arg type "$template_type" \
+            '[.[] | select(.name == $name and .type == $type and (.team == null))]' <<<"$workspace_templates")"
+        optional_unique_match \
+            existing_template \
+            "$existing_templates_json" \
+            "Ambiguous match: found multiple workspace templates named '${template_name}' of type '${template_type}'"
         create_template="$(jq -c '{
             name,
             description: (.description // null),
@@ -357,11 +402,15 @@ build_plan() {
 
     while IFS= read -r desired_template; do
         [[ -n "$desired_template" ]] || continue
-        local template_name template_type existing_template create_template update_template
+        local template_name template_type existing_template create_template update_template existing_templates_json
         template_name="$(jq -r '.name' <<<"$desired_template")"
         template_type="$(jq -r '.type' <<<"$desired_template")"
-        existing_template="$(jq -c --arg name "$template_name" --arg type "$template_type" --arg team_key "$team_key" \
-            '.[] | select(.name == $name and .type == $type and .team.key == $team_key)' <<<"$team_templates" | head -n1)"
+        existing_templates_json="$(jq -c --arg name "$template_name" --arg type "$template_type" --arg team_key "$team_key" \
+            '[.[] | select(.name == $name and .type == $type and .team.key == $team_key)]' <<<"$team_templates")"
+        optional_unique_match \
+            existing_template \
+            "$existing_templates_json" \
+            "Ambiguous match: found multiple templates named '${template_name}' of type '${template_type}' in team '${team_key}'"
         create_template="$(jq -c --arg team_id "$team_id" '{
             teamId: $team_id,
             name,

@@ -32,6 +32,12 @@ printf '%s\n' "$payload" >> "${REQUESTS_LOG}"
 query="$(jq -r '.query' <<<"$payload")"
 
 if [[ "$query" == *"query BootstrapState"* ]]; then
+  if [[ "${LINEAR_FAKE_STATE_MODE:-default}" == "duplicate-team" ]]; then
+    cat <<'JSON'
+{"data":{"viewer":{"organization":{"id":"org-1","templates":{"nodes":[]}}},"teams":{"nodes":[{"id":"team-1","key":"resq","name":"ResQ","triageEnabled":false,"cyclesEnabled":false,"cycleDuration":1,"cycleCooldownTime":1,"upcomingCycleCount":2,"labels":{"nodes":[]},"states":{"nodes":[]},"templates":{"nodes":[]}},{"id":"team-2","key":"resq","name":"ResQ Duplicate","triageEnabled":false,"cyclesEnabled":false,"cycleDuration":1,"cycleCooldownTime":1,"upcomingCycleCount":2,"labels":{"nodes":[]},"states":{"nodes":[]},"templates":{"nodes":[]}}]}}}
+JSON
+    exit 0
+  fi
   cat <<'JSON'
 {"data":{"viewer":{"organization":{"id":"org-1","templates":{"nodes":[]}}},"teams":{"nodes":[{"id":"team-1","key":"resq","name":"ResQ","triageEnabled":false,"cyclesEnabled":false,"cycleDuration":1,"cycleCooldownTime":1,"upcomingCycleCount":2,"labels":{"nodes":[{"id":"label-1","name":"feature","color":"#999999","description":"Old description","isGroup":false}]},"states":{"nodes":[{"id":"state-1","name":"Backlog","type":"backlog","color":"#6b7280","description":"Accepted work not yet scheduled","position":0}]},"templates":{"nodes":[]}}]}}}
 JSON
@@ -138,6 +144,15 @@ cat > "${TEST_CONFIG}" <<'JSON'
 }
 JSON
 
+BAD_TEST_CONFIG="${TEST_ROOT}/resq.invalid.json"
+cat > "${BAD_TEST_CONFIG}" <<'JSON'
+{
+  "team": {
+    "key": "resq"
+  }
+}
+JSON
+
 export REQUESTS_LOG
 export PATH="${FAKE_BIN}:$PATH"
 export LINEAR_API_KEY="linear-test-key"
@@ -148,6 +163,12 @@ SCRIPT="${PROJECT_ROOT}/scripts/linear-bootstrap.sh"
 validate_output="$("${SCRIPT}" validate --config "${TEST_CONFIG}")"
 [[ "$validate_output" == *"Config valid"* ]]
 
+if "${SCRIPT}" validate --config "${BAD_TEST_CONFIG}" >"${TEST_ROOT}/bad-validate.out" 2>"${TEST_ROOT}/bad-validate.err"; then
+  echo "expected validate to fail on malformed config" >&2
+  exit 1
+fi
+grep -qiE 'missing|invalid|error' "${TEST_ROOT}/bad-validate.err"
+
 plan_output="$("${SCRIPT}" plan --config "${TEST_CONFIG}")"
 [[ "$plan_output" == *"label.create [resq] bug"* ]]
 [[ "$plan_output" == *"label.update [resq] feature"* ]]
@@ -155,6 +176,12 @@ plan_output="$("${SCRIPT}" plan --config "${TEST_CONFIG}")"
 [[ "$plan_output" == *"team.update [resq] team-1"* ]]
 [[ "$plan_output" == *"template.create [workspace] Release"* ]]
 [[ "$plan_output" == *"template.create [resq] Bug Report"* ]]
+
+if LINEAR_FAKE_STATE_MODE="duplicate-team" "${SCRIPT}" plan --config "${TEST_CONFIG}" >"${TEST_ROOT}/duplicate-team.out" 2>"${TEST_ROOT}/duplicate-team.err"; then
+  echo "expected plan to fail on duplicate team keys" >&2
+  exit 1
+fi
+grep -qi 'ambiguous' "${TEST_ROOT}/duplicate-team.err"
 
 : > "${REQUESTS_LOG}"
 "${SCRIPT}" apply --config "${TEST_CONFIG}" >/dev/null
