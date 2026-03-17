@@ -22,7 +22,7 @@ Improve this `cli` workspace by borrowing the strongest Rust ergonomics from `~/
 
 ## Context
 
-The current workspace already has a solid root [`Cargo.toml`](/home/wombocombo/github/wrk/cli/Cargo.toml) with shared dependencies and basic workspace lints, but it is missing several repo-level conventions present in `resQ`:
+The current workspace already has a solid root [`Cargo.toml`](../../../Cargo.toml) with shared dependencies and basic workspace lints, but it is missing several repo-level conventions present in `resQ`:
 
 - A pinned Rust toolchain via `rust-toolchain.toml`
 - Shared cargo aliases and environment defaults via `.cargo/config.toml`
@@ -85,7 +85,7 @@ Update docs so the repo has one clear Rust workflow.
 
 This includes:
 
-- Root [`README.md`](/home/wombocombo/github/wrk/cli/README.md) updates for:
+- Root [`README.md`](../../../README.md) updates for:
   - pinned stable toolchain
   - preferred cargo aliases
   - preferred local check, test, and lint commands

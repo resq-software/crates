@@ -27,7 +27,7 @@ cargo test -p resq-health-checker
 - New services must be added to the registry in `src/services.rs`.
 - Support JSON-RPC or other non-standard health checks (e.g. Neo N3) in `check_service`.
 - Ensure `--check` mode exits with correct status codes for CI.
-- `AGENTS.md` is the source of truth for the local `CLAUDE.md` mirror — never edit `CLAUDE.md` directly.
+- `AGENTS.md` is the source of truth for the local `CLAUDE.md` mirror — keep `CLAUDE.md` synchronized with `./agent-sync.sh` and never edit `CLAUDE.md` directly.
 
 ## Safety
 - Be aware of polling frequency to avoid accidental DoS on local services.

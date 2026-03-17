@@ -35,7 +35,7 @@ cargo test -p resq-tui
 
 ## Workflow
 1. Run `cargo build -p resq-tui` before finalizing code changes.
-2. Verify visual changes in at least one consumer explorer (e.g. `resq-logs`).
+2. Verify visual changes in at least one consumer explorer (e.g. `log-viewer`).
 3. If you edited any `AGENTS.md`, run `./agent-sync.sh` from the repo root before finishing.
 4. Summarize: files changed, new components (if any), and visual impact.
 
