@@ -141,6 +141,25 @@ The `resq` binary acts as an orchestrator for all sub-tools.
 | :--- | :--- |
 | `GIT_HOOKS_SKIP` | Disables automated pre-commit hooks. |
 | `RESQ_NIX_RECURSION` | Internal safety flag for recursive execution in Nix environments. |
+| `LINEAR_API_KEY` | Personal API key used by `scripts/linear-bootstrap.sh`. |
+
+### Linear bootstrap
+
+The repo includes a checked-in Linear bootstrap tool for additive workspace and team setup:
+
+```sh
+./scripts/linear-bootstrap.sh validate
+./scripts/linear-bootstrap.sh plan
+./scripts/linear-bootstrap.sh apply
+```
+
+Defaults:
+
+- config file: `config/linear/resq.json`
+- mode: additive only, no deletes
+- target team: existing `resq` team
+
+The script uses Linear's GraphQL API and requires `LINEAR_API_KEY` for `plan` and `apply`.
 
 ---
 

@@ -1,0 +1,126 @@
+{
+  "workspace": {
+    "templates": []
+  },
+  "team": {
+    "key": "resq",
+    "settings": {
+      "triageEnabled": true,
+      "cyclesEnabled": true,
+      "cycleDuration": 2,
+      "cycleCooldownTime": 0,
+      "upcomingCycleCount": 6
+    },
+    "labels": [
+      {
+        "name": "bug",
+        "color": "#ef4444",
+        "description": "Defects, regressions, and broken behavior",
+        "isGroup": false
+      },
+      {
+        "name": "feature",
+        "color": "#3b82f6",
+        "description": "New user-facing capabilities",
+        "isGroup": false
+      },
+      {
+        "name": "tech-debt",
+        "color": "#f59e0b",
+        "description": "Maintenance, cleanup, and internal improvements",
+        "isGroup": false
+      },
+      {
+        "name": "infra",
+        "color": "#8b5cf6",
+        "description": "Infrastructure, CI/CD, and tooling work",
+        "isGroup": false
+      },
+      {
+        "name": "security",
+        "color": "#dc2626",
+        "description": "Security-sensitive changes or follow-ups",
+        "isGroup": false
+      },
+      {
+        "name": "blocked",
+        "color": "#6b7280",
+        "description": "Waiting on an external dependency or decision",
+        "isGroup": false
+      }
+    ],
+    "workflowStates": [
+      {
+        "name": "Triage",
+        "type": "triage",
+        "color": "#f59e0b",
+        "description": "New inbound work waiting for review",
+        "position": 0
+      },
+      {
+        "name": "Backlog",
+        "type": "backlog",
+        "color": "#6b7280",
+        "description": "Accepted work not yet scheduled",
+        "position": 0
+      },
+      {
+        "name": "Todo",
+        "type": "unstarted",
+        "color": "#3b82f6",
+        "description": "Ready to be picked up",
+        "position": 0
+      },
+      {
+        "name": "In Progress",
+        "type": "started",
+        "color": "#8b5cf6",
+        "description": "Actively being worked on",
+        "position": 0
+      },
+      {
+        "name": "In Review",
+        "type": "started",
+        "color": "#ec4899",
+        "description": "Waiting on review or validation",
+        "position": 1
+      },
+      {
+        "name": "Ready to Merge",
+        "type": "started",
+        "color": "#14b8a6",
+        "description": "Approved and waiting to land",
+        "position": 2
+      },
+      {
+        "name": "Done",
+        "type": "completed",
+        "color": "#22c55e",
+        "description": "Completed work",
+        "position": 0
+      },
+      {
+        "name": "Blocked",
+        "type": "started",
+        "color": "#f97316",
+        "description": "In progress but waiting on an external dependency",
+        "position": 3
+      },
+      {
+        "name": "Duplicate",
+        "type": "canceled",
+        "color": "#64748b",
+        "description": "Covered by another issue",
+        "position": 0
+      },
+      {
+        "name": "Won't Do",
+        "type": "canceled",
+        "color": "#475569",
+        "description": "Intentionally not being pursued",
+        "position": 1
+      }
+    ],
+    "templates": []
+  }
+}
