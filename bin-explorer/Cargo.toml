@@ -38,7 +38,7 @@ serde_json = { workspace = true }
 object = "0.38"
 ratatui = { workspace = true }
 crossterm = { workspace = true }
-resq-tui = { path = "../resq-tui", version = "0.1" }
+resq-tui = { workspace = true }
 regex = { workspace = true }
 toml = { workspace = true }
 crc32fast = "1.5"

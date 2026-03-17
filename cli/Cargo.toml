@@ -42,7 +42,7 @@ toml = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 walkdir = { workspace = true }
-resq-tui = { path = "../resq-tui", version = "0.1.2" }
+resq-tui = { workspace = true }
 
 # Secret scanner performance
 aho-corasick = "1.1"

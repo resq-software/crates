@@ -28,7 +28,7 @@ path = "src/main.rs"
 
 [dependencies]
 # CLI
-clap = { version = "4", features = ["derive"] }
+clap = { workspace = true }
 
 # Flame graph generation
 inferno = "0.12"
@@ -51,13 +51,13 @@ chrono = { workspace = true }
 open = "5"
 
 # File globbing for 0x output
-glob = "0.3"
+glob = { workspace = true }
 
 ratatui = { workspace = true }
 crossterm = { workspace = true }
 
 # Shared TUI components
-resq-tui = { path = "../resq-tui", version = "0.1" }
+resq-tui = { workspace = true }
 
 # [profile.release]
 # opt-level = 3

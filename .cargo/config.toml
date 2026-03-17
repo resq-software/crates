@@ -1,0 +1,20 @@
+[alias]
+t = "test --workspace"
+c = "clippy --workspace --all-targets -- -D warnings"
+check-all = "check --workspace --all-targets"
+resq = "run -p resq-cli --"
+health = "run -p resq-health-checker --"
+logs = "run -p resq-log-viewer --"
+perf = "run -p resq-perf-monitor --"
+deploy = "run -p resq-deploy-cli --"
+cleanup = "run -p resq-cleanup --"
+bin = "run -p resq-bin-explorer --"
+flame = "run -p resq-flamegraph --"
+
+[env]
+CARGO_TERM_COLOR = "always"
+RUST_BACKTRACE = "1"
+
+[term]
+progress.when = "always"
+progress.width = 100

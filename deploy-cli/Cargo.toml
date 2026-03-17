@@ -32,20 +32,20 @@ ratatui = { workspace = true }
 crossterm = { workspace = true }
 
 # Async runtime
-tokio = { version = "1", features = ["full"] }
+tokio = { workspace = true }
 
 # Serialization
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # CLI
-clap = { version = "4", features = ["derive"] }
+clap = { workspace = true }
 
 # Time
-chrono = "0.4"
+chrono = { workspace = true }
 
 # Shared TUI components
-resq-tui = { path = "../resq-tui", version = "0.1" }
+resq-tui = { workspace = true }
 
 # [profile.release]
 

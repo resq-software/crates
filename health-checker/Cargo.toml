@@ -57,7 +57,7 @@ walkdir = { workspace = true }
 chrono = { workspace = true }
 
 # Shared TUI components
-resq-tui = { path = "../resq-tui", version = "0.1" }
+resq-tui = { workspace = true }
 
 [lints]
 workspace = true

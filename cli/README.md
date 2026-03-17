@@ -24,11 +24,16 @@ Rust developer tooling CLI for the ResQ monorepo. Handles license headers, image
 # Build from workspace root
 cargo build --release -p resq-cli
 
+# Preferred day-to-day developer entrypoint
+cargo resq help
+
 # Optional: install globally
 cargo install --path cli
 ```
 
 Binary: `target/release/resq`
+
+Additional workspace aliases are defined in `.cargo/config.toml`, including `cargo check-all`, `cargo t`, `cargo c`, `cargo health`, `cargo logs`, `cargo perf`, `cargo deploy`, `cargo cleanup`, `cargo bin`, and `cargo flame`.
 
 ## Commands
 

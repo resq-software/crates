@@ -75,7 +75,7 @@ flowchart TD
 
 ### Prerequisites
 - **Nix:** Recommended for reproducible development environments.
-- **Rust:** Latest stable toolchain.
+- **Rust:** Stable toolchain via `rustup`. The repo pins `stable` in `rust-toolchain.toml` and expects `rustfmt` and `clippy`.
 
 ### Via Cargo
 ```sh
@@ -148,9 +148,13 @@ The `resq` binary acts as an orchestrator for all sub-tools.
 
 The project utilizes `Nix` to maintain consistency across team environments.
 
-1. **Environment:** Enter the shell with `nix develop`.
-2. **Testing:** Execute `cargo nextest run` for optimized parallel testing.
-3. **Consistency:** Always keep `AGENTS.md` and `CLAUDE.md` in sync using `./agent-sync.sh`.
+1. **Environment:** Enter the shell with `nix develop` if you use Nix. Otherwise `cargo` will use the pinned stable toolchain from `rust-toolchain.toml`.
+2. **Fast checks:** Run `cargo check-all`.
+3. **Tests:** Run `cargo t`. If you prefer `nextest`, `cargo nextest run` still works in the Nix shell.
+4. **Lint:** Run `cargo c`.
+5. **Format:** Run `cargo fmt --all --check`.
+6. **Run the CLI:** Use `cargo resq help` or one of the focused aliases such as `cargo health`, `cargo logs`, `cargo perf`, `cargo deploy`, `cargo cleanup`, `cargo bin`, and `cargo flame`.
+7. **Consistency:** Always keep `AGENTS.md` and `CLAUDE.md` in sync using `./agent-sync.sh`.
 
 ---
 
