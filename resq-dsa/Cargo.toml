@@ -15,5 +15,8 @@ std = []
 
 [dependencies]
 
+[dev-dependencies]
+big-o-test = "0.2"
+
 [lints]
 workspace = true
