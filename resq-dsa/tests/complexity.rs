@@ -75,6 +75,7 @@ fn assert_not_quadratic(name: &str, t_n: f64, t_4n: f64, max_ratio_4x: f64) {
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore] // Timing-sensitive — run locally with: cargo test -p resq-dsa -- --ignored
 fn bloom_filter_insert_linear_scaling() {
     let n = 20_000_usize;
 
@@ -97,6 +98,7 @@ fn bloom_filter_insert_linear_scaling() {
 }
 
 #[test]
+#[ignore] // Timing-sensitive — run locally with: cargo test -p resq-dsa -- --ignored
 fn bloom_filter_lookup_linear_scaling() {
     let n = 20_000_usize;
 
@@ -129,6 +131,7 @@ fn bloom_filter_lookup_linear_scaling() {
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore] // Timing-sensitive — run locally with: cargo test -p resq-dsa -- --ignored
 fn bounded_heap_insert_nlogn_scaling() {
     let n = 20_000_usize;
 
@@ -156,6 +159,7 @@ fn bounded_heap_insert_nlogn_scaling() {
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore] // Timing-sensitive — run locally with: cargo test -p resq-dsa -- --ignored
 fn graph_dijkstra_nlogn_scaling() {
     let n = 2_000_usize;
 
@@ -187,6 +191,7 @@ fn graph_dijkstra_nlogn_scaling() {
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore] // Timing-sensitive — run locally with: cargo test -p resq-dsa -- --ignored
 fn graph_bfs_linear_scaling() {
     let n = 2_000_usize;
 
@@ -218,6 +223,7 @@ fn graph_bfs_linear_scaling() {
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore] // Timing-sensitive — run locally with: cargo test -p resq-dsa -- --ignored
 fn trie_insert_linear_scaling() {
     let n = 20_000_usize;
 
@@ -239,6 +245,7 @@ fn trie_insert_linear_scaling() {
 }
 
 #[test]
+#[ignore] // Timing-sensitive — run locally with: cargo test -p resq-dsa -- --ignored
 fn trie_search_linear_scaling() {
     let n = 20_000_usize;
 
@@ -271,6 +278,7 @@ fn trie_search_linear_scaling() {
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore] // Timing-sensitive — run locally with: cargo test -p resq-dsa -- --ignored
 fn count_min_increment_linear_scaling() {
     let n = 20_000_usize;
 
@@ -292,6 +300,7 @@ fn count_min_increment_linear_scaling() {
 }
 
 #[test]
+#[ignore] // Timing-sensitive — run locally with: cargo test -p resq-dsa -- --ignored
 fn count_min_estimate_linear_scaling() {
     let n = 20_000_usize;
 

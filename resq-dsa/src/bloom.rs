@@ -103,10 +103,10 @@ impl BloomFilter {
 
     /// FNV-1a hash variant with a seed for producing independent hash functions.
     fn hash(bytes: &[u8], seed: u32, m: usize) -> usize {
-        let mut h: u32 = 2_166_136_261u32 ^ seed;
+        let mut h: u32 = 0x811c_9dc5_u32 ^ seed;
         for &b in bytes {
             h ^= u32::from(b);
-            h = h.wrapping_mul(16_777_619);
+            h = h.wrapping_mul(0x0100_0193);
         }
         (h as usize) % m
     }
