@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#![allow(clippy::pedantic, clippy::all)]
+
 //! Algorithmic complexity verification tests.
 //!
 //! These tests measure execution time at three input sizes (N, 2N, 4N) and
