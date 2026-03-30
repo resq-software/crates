@@ -38,7 +38,7 @@ concurrency:
 jobs:
   osv-scan:
     name: OSV-Scanner
-    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.3.3"
+    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.3.5"
     permissions:
       contents: read
       security-events: write
