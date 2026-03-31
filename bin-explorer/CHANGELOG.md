@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Other
 
+- release v0.1.7 ([#21](https://github.com/resq-software/crates/pull/21))
+- *(deps)* update object requirement from 0.38 to 0.39 ([#20](https://github.com/resq-software/crates/pull/20))
+
+## [0.1.7](https://github.com/resq-software/crates/compare/resq-bin-explorer-v0.1.6...resq-bin-explorer-v0.1.7) - 2026-03-31
+
+### Other
+
 - *(deps)* update object requirement from 0.38 to 0.39 ([#20](https://github.com/resq-software/crates/pull/20))
 
 ## [0.1.6](https://github.com/resq-software/crates/compare/resq-bin-explorer-v0.1.5...resq-bin-explorer-v0.1.6) - 2026-03-27
