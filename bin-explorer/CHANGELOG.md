@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.8](https://github.com/resq-software/crates/compare/resq-bin-explorer-v0.1.7...resq-bin-explorer-v0.1.8) - 2026-03-31
+
+### Other
+
+- release v0.1.7 ([#22](https://github.com/resq-software/crates/pull/22))
+
 ## [0.1.7](https://github.com/resq-software/crates/compare/resq-bin-explorer-v0.1.6...resq-bin-explorer-v0.1.7) - 2026-03-31
 
 ### Other
