@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.12](https://github.com/resq-software/crates/compare/resq-clean-v0.1.11...resq-clean-v0.1.12) - 2026-04-03
+
+### Other
+
+- release v0.1.11 ([#31](https://github.com/resq-software/crates/pull/31))
+
 ## [0.1.11](https://github.com/resq-software/crates/compare/resq-clean-v0.1.10...resq-clean-v0.1.11) - 2026-04-03
 
 ### Other
