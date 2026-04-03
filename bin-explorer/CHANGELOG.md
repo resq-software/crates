@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.10](https://github.com/resq-software/crates/releases/tag/resq-bin-v0.1.10) - 2026-04-03
+
+### Added
+
+- add 7 ResQ tools as workspace members with crates.io metadata
+
+### Fixed
+
+- align crate package names with published identities and fix stale references
+- *(ci)* resolve all clippy pedantic lint failures across 5 crates
+
+### Other
+
+- release v0.1.10 ([#28](https://github.com/resq-software/crates/pull/28))
+- release v0.1.10 ([#27](https://github.com/resq-software/crates/pull/27))
+- release v0.1.9 ([#26](https://github.com/resq-software/crates/pull/26))
+- release v0.1.9 ([#25](https://github.com/resq-software/crates/pull/25))
+- release v0.1.8 ([#24](https://github.com/resq-software/crates/pull/24))
+- release v0.1.8 ([#23](https://github.com/resq-software/crates/pull/23))
+- release v0.1.7 ([#22](https://github.com/resq-software/crates/pull/22))
+- release v0.1.7 ([#21](https://github.com/resq-software/crates/pull/21))
+- *(deps)* update object requirement from 0.38 to 0.39 ([#20](https://github.com/resq-software/crates/pull/20))
+- release
+- update repo references after rename cli → crates
+- release
+- optimize rust workspace configuration
+- add rust workspace optimization design
+- remove gitleaks binary and update configuration files
+- release
+- Merge pull request #9 from resq-software/release-plz-2026-03-15T05-20-00Z
+- release
+- add dev tooling — hooks, skills, agents, codecov, dependabot
+- release v0.1.1
+- release v0.1.0
+- apply rustfmt to all workspace crates
+- copy 7 tools from monorepo
+
 ## [0.1.10](https://github.com/resq-software/crates/compare/resq-bin-explorer-v0.1.9...resq-bin-explorer-v0.1.10) - 2026-04-02
 
 ### Other

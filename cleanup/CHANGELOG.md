@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.10](https://github.com/resq-software/crates/releases/tag/resq-clean-v0.1.10) - 2026-04-03
+
+### Added
+
+- add 7 ResQ tools as workspace members with crates.io metadata
+
+### Fixed
+
+- align crate package names with published identities and fix stale references
+- *(ci)* resolve all clippy pedantic lint failures across 5 crates
+
+### Other
+
+- release
+- update repo references after rename cli → crates
+- keep docs cleanup scoped
+- remove tracked linear planning docs
+- release
+- optimize rust workspace configuration
+- remove gitleaks binary and update configuration files
+- release
+- add dev tooling — hooks, skills, agents, codecov, dependabot
+- release v0.1.1
+- release v0.1.0
+- apply rustfmt to all workspace crates
+- copy 7 tools from monorepo
+
 ## [0.1.6](https://github.com/resq-software/crates/compare/resq-cleanup-v0.1.5...resq-cleanup-v0.1.6) - 2026-03-27
 
 ### Other
