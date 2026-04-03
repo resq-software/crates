@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Other
 
+- release v0.1.11 ([#30](https://github.com/resq-software/crates/pull/30))
+- release v0.1.10 ([#29](https://github.com/resq-software/crates/pull/29))
+
+## [0.1.11](https://github.com/resq-software/crates/compare/resq-clean-v0.1.10...resq-clean-v0.1.11) - 2026-04-03
+
+### Other
+
 - release v0.1.10 ([#29](https://github.com/resq-software/crates/pull/29))
 
 ## [0.1.10](https://github.com/resq-software/crates/releases/tag/resq-clean-v0.1.10) - 2026-04-03
