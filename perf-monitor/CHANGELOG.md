@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.13](https://github.com/resq-software/crates/compare/resq-perf-v0.1.12...resq-perf-v0.1.13) - 2026-04-05
+
+### Other
+
+- extract shared TUI terminal module and slim workspace deps ([#35](https://github.com/resq-software/crates/pull/35))
+
 ## [0.1.10](https://github.com/resq-software/crates/compare/resq-perf-monitor-v0.1.9...resq-perf-monitor-v0.1.10) - 2026-04-02
 
 ### Other
