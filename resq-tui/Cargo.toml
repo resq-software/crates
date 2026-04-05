@@ -23,6 +23,7 @@ keywords = ["tui", "ratatui", "cli", "resq", "terminal"]
 categories = ["command-line-interface", "visualization"]
 
 [dependencies]
+anyhow = { workspace = true }
 crossterm = { workspace = true }
 ratatui = { workspace = true }
 serde = { workspace = true }

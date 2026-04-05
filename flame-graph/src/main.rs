@@ -21,26 +21,20 @@
 
 #![deny(missing_docs)]
 
+use clap::{Parser, Subcommand};
+use inferno::flamegraph::{self, Options as FlamegraphOptions};
 use std::collections::HashMap;
 use std::fmt;
 use std::fs;
 use std::io::{BufReader, BufWriter, Cursor};
 use std::path::PathBuf;
-use std::time::Duration;
 
-use clap::{Parser, Subcommand};
-use inferno::flamegraph::{self, Options as FlamegraphOptions};
-
-use crossterm::{
-    event::{self, Event, KeyCode, KeyEventKind},
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen},
-    ExecutableCommand,
-};
-use ratatui::{
+use resq_tui::crossterm::event::{self, KeyCode, KeyEventKind};
+use resq_tui::ratatui::{
     prelude::*,
     widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
 };
-use resq_tui::{self as tui, Theme};
+use resq_tui::{self as tui, terminal, terminal::TuiApp, Theme};
 
 // ─── CLI ───────────────────────────────────────────────────────────────────────
 
@@ -80,6 +74,8 @@ struct App {
     list_state: ListState,
     theme: Theme,
     output_path: PathBuf,
+    /// Set when the user presses Enter; holds the index of the selected target.
+    selected_target: Option<usize>,
 }
 
 struct ProfilingTarget {
@@ -118,6 +114,42 @@ impl App {
             list_state,
             theme: Theme::default(),
             output_path,
+            selected_target: None,
+        }
+    }
+}
+
+// ─── TuiApp impl ─────────────────────────────────────────────────────────────
+
+impl TuiApp for App {
+    fn draw(&mut self, frame: &mut Frame) {
+        draw_ui(frame, self);
+    }
+
+    fn handle_key(&mut self, key: event::KeyEvent) -> anyhow::Result<bool> {
+        if key.kind != KeyEventKind::Press {
+            return Ok(true);
+        }
+        match key.code {
+            KeyCode::Char('q') | KeyCode::Esc => Ok(false),
+            KeyCode::Down | KeyCode::Char('j') => {
+                let i = self.list_state.selected().unwrap_or(0);
+                self.list_state
+                    .select(Some((i + 1).min(self.services.len() - 1)));
+                Ok(true)
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                let i = self.list_state.selected().unwrap_or(0);
+                self.list_state.select(Some(i.saturating_sub(1)));
+                Ok(true)
+            }
+            KeyCode::Enter => {
+                if let Some(i) = self.list_state.selected() {
+                    self.selected_target = Some(i);
+                }
+                Ok(false)
+            }
+            _ => Ok(true),
         }
     }
 }
@@ -125,7 +157,7 @@ impl App {
 // ─── Main ──────────────────────────────────────────────────────────────────────
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     if cli.command.is_some() {
@@ -133,37 +165,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    let mut app = App::new(cli.output);
-    enable_raw_mode()?;
-    std::io::stdout().execute(EnterAlternateScreen)?;
-    let mut terminal = ratatui::init();
+    let mut app = App::new(cli.output.clone());
+    let mut term = terminal::init()?;
+    let result = terminal::run_loop(&mut term, 100, &mut app);
+    terminal::restore();
+    result?;
 
-    loop {
-        terminal.draw(|f| draw_ui(f, &mut app))?;
-        if event::poll(Duration::from_millis(100))? {
-            if let Event::Key(key) = event::read()? {
-                if key.kind != KeyEventKind::Press {
-                    continue;
-                }
-                match key.code {
-                    KeyCode::Char('q') | KeyCode::Esc => break,
-                    KeyCode::Down | KeyCode::Char('j') => {
-                        let i = app.list_state.selected().unwrap_or(0);
-                        app.list_state
-                            .select(Some((i + 1).min(app.services.len() - 1)));
-                    }
-                    KeyCode::Up | KeyCode::Char('k') => {
-                        let i = app.list_state.selected().unwrap_or(0);
-                        app.list_state.select(Some(i.saturating_sub(1)));
-                    }
-                    _ => {}
-                }
-            }
-        }
+    if let Some(idx) = app.selected_target {
+        let target = &app.services[idx];
+        println!(
+            "Starting profiling for: {} (engine: {})",
+            target.name, target.cmd_type
+        );
+        println!("Output: {}", cli.output.display());
+        // TODO: dispatch to the appropriate profiling backend based on target.cmd_type
     }
 
-    ratatui::restore();
-    disable_raw_mode()?;
     Ok(())
 }
 
@@ -187,7 +204,7 @@ fn draw_ui(f: &mut Frame, app: &mut App) {
     );
 
     let body = Layout::default()
-        .direction(ratatui::layout::Direction::Horizontal)
+        .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
         .split(chunks[1]);
 

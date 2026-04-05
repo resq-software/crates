@@ -27,12 +27,8 @@ name = "resq-health"
 path = "src/main.rs"
 
 [dependencies]
-# TUI
-ratatui = { workspace = true }
-crossterm = { workspace = true }
-
 # Async runtime
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["time"] }
 
 # HTTP client
 reqwest = { workspace = true }

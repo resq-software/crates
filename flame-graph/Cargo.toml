@@ -53,8 +53,8 @@ open = "5"
 # File globbing for 0x output
 glob = { workspace = true }
 
-ratatui = { workspace = true }
-crossterm = { workspace = true }
+# Error handling
+anyhow = { workspace = true }
 
 # Shared TUI components
 resq-tui = { workspace = true }

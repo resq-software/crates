@@ -27,16 +27,15 @@ use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 
 use clap::Parser;
-use crossterm::{
+use resq_tui::crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{
+use resq_tui::ratatui::{
     prelude::*,
     widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table, TableState},
 };
-use resq_tui::{self as tui, Theme};
+use resq_tui::{self as tui, terminal, Theme};
 use services::{HealthStatus, ServiceHealth, ServiceRegistry};
 
 /// `ResQ` Health Check Dashboard
@@ -164,10 +163,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(i32::from(healthy != total));
     }
 
-    enable_raw_mode()?;
-    execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
-    let mut terminal =
-        ratatui::Terminal::new(ratatui::backend::CrosstermBackend::new(io::stdout()))?;
+    let mut terminal = terminal::init()?;
+    execute!(io::stdout(), EnableMouseCapture)?;
 
     let (event_tx, mut event_rx) = mpsc::channel(32);
     let (reg_tx, mut reg_rx) = mpsc::channel(1);
@@ -227,8 +224,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    disable_raw_mode()?;
-    execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
+    execute!(io::stdout(), DisableMouseCapture)?;
+    terminal::restore();
     Ok(())
 }
 
@@ -253,7 +250,7 @@ fn draw_ui(f: &mut Frame, app: &mut App) {
     }
 
     let chunks = Layout::default()
-        .direction(ratatui::layout::Direction::Vertical)
+        .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3),
             Constraint::Min(5),

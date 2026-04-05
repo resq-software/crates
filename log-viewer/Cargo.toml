@@ -27,9 +27,8 @@ name = "resq-logs"
 path = "src/main.rs"
 
 [dependencies]
-# TUI
-ratatui = { workspace = true }
-crossterm = { workspace = true }
+# Shared TUI components (re-exports ratatui + crossterm)
+resq-tui = { workspace = true }
 
 # Async runtime
 tokio = { workspace = true }
@@ -47,8 +46,8 @@ chrono = { workspace = true }
 # Pattern matching
 regex = { workspace = true }
 
-# Shared TUI components
-resq-tui = { workspace = true }
+# Error handling
+anyhow = { workspace = true }
 
 # [profile.release]
 

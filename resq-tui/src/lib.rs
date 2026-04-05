@@ -17,6 +17,11 @@
 //! Shared TUI components and themes for `ResQ` developer tools.
 //! Inspired by binsider architecture.
 
+pub use crossterm;
+pub use ratatui;
+
+pub mod terminal;
+
 use ratatui::{
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style, Stylize},

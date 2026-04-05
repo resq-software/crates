@@ -25,23 +25,18 @@ use anyhow::Result;
 use clap::Parser;
 use ignore::{gitignore::Gitignore, WalkBuilder};
 use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 
-use crossterm::{
-    event::{self, Event, KeyCode, KeyEventKind},
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-    ExecutableCommand,
-};
-use ratatui::{
+use resq_tui::crossterm::event::{KeyCode, KeyEventKind};
+use resq_tui::ratatui::{
     layout::{Constraint, Layout},
     style::Style,
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, List, ListItem, ListState},
     Frame,
 };
-use resq_tui::{self as tui, Theme};
+use resq_tui::terminal::TuiApp;
+use resq_tui::{self as tui, terminal, Theme};
 
 /// Visual workspace cleaner for `ResQ`.
 #[derive(Parser, Debug)]
@@ -149,6 +144,45 @@ fn get_dir_size(path: &Path) -> u64 {
         .sum()
 }
 
+impl TuiApp for App {
+    fn draw(&mut self, f: &mut Frame) {
+        draw_ui(f, self);
+    }
+
+    fn handle_key(&mut self, key: resq_tui::crossterm::event::KeyEvent) -> Result<bool> {
+        if key.kind != KeyEventKind::Press {
+            return Ok(true);
+        }
+        match key.code {
+            KeyCode::Char('q') | KeyCode::Esc => Ok(false),
+            KeyCode::Char(' ') => {
+                self.toggle_selected();
+                Ok(true)
+            }
+            KeyCode::Enter => {
+                self.delete_selected();
+                Ok(!self.dry_run)
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                let i = self.list_state.selected().unwrap_or(0);
+                if !self.entries.is_empty() {
+                    self.list_state
+                        .select(Some((i + 1).min(self.entries.len() - 1)));
+                }
+                Ok(true)
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                if !self.entries.is_empty() {
+                    let i = self.list_state.selected().unwrap_or(0);
+                    self.list_state.select(Some(i.saturating_sub(1)));
+                }
+                Ok(true)
+            }
+            _ => Ok(true),
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
@@ -156,47 +190,10 @@ async fn main() -> Result<()> {
     let mut app = App::new(root, args.dry_run);
     app.scan();
 
-    enable_raw_mode()?;
-    io::stdout().execute(EnterAlternateScreen)?;
-    let mut terminal = ratatui::init();
-
-    loop {
-        terminal.draw(|f| draw_ui(f, &mut app))?;
-        if event::poll(Duration::from_millis(100))? {
-            if let Event::Key(key) = event::read()? {
-                if key.kind != KeyEventKind::Press {
-                    continue;
-                }
-                match key.code {
-                    KeyCode::Char('q') | KeyCode::Esc => break,
-                    KeyCode::Char(' ') => app.toggle_selected(),
-                    KeyCode::Enter => {
-                        app.delete_selected();
-                        if app.dry_run {
-                            break;
-                        }
-                    }
-                    KeyCode::Down | KeyCode::Char('j') => {
-                        let i = app.list_state.selected().unwrap_or(0);
-                        if !app.entries.is_empty() {
-                            app.list_state
-                                .select(Some((i + 1).min(app.entries.len() - 1)));
-                        }
-                    }
-                    KeyCode::Up | KeyCode::Char('k') => {
-                        let i = app.list_state.selected().unwrap_or(0);
-                        app.list_state.select(Some(i.saturating_sub(1)));
-                    }
-                    _ => {}
-                }
-            }
-        }
-    }
-
-    ratatui::restore();
-    disable_raw_mode()?;
-    io::stdout().execute(LeaveAlternateScreen)?;
-    Ok(())
+    let mut terminal = terminal::init()?;
+    let result = terminal::run_loop(&mut terminal, 100, &mut app);
+    terminal::restore();
+    result
 }
 
 fn draw_ui(f: &mut Frame, app: &mut App) {

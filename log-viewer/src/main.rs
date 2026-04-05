@@ -25,26 +25,22 @@ mod parser;
 mod sources;
 
 use std::collections::VecDeque;
-use std::io;
 use std::path::PathBuf;
-use std::time::Duration;
 
 use clap::Parser;
-use crossterm::{
-    event::{self, Event, KeyCode, KeyEventKind},
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-    ExecutableCommand,
-};
-use ratatui::{
+use resq_tui::crossterm::event::{self, KeyCode, KeyEventKind};
+use resq_tui::ratatui::{
     prelude::*,
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
 };
+use resq_tui::terminal::{self, TuiApp};
+use resq_tui::{self as tui, Theme};
 use tokio::sync::mpsc;
 
 use parser::{LogEntry, LogLevel};
-use resq_tui::{self as tui, Theme};
 
 const MAX_LOG_LINES: usize = 10_000;
+const MAX_INGEST_PER_FRAME: usize = 256;
 
 /// Aggregated log viewer for `ResQ` services.
 #[derive(Parser)]
@@ -84,10 +80,15 @@ struct App {
     input_mode: InputMode,
     search_input: String,
     theme: Theme,
+    rx: mpsc::UnboundedReceiver<LogEntry>,
 }
 
 impl App {
-    fn new(level_filter: Option<LogLevel>, service_filter: Option<String>) -> Self {
+    fn new(
+        level_filter: Option<LogLevel>,
+        service_filter: Option<String>,
+        rx: mpsc::UnboundedReceiver<LogEntry>,
+    ) -> Self {
         Self {
             logs: VecDeque::with_capacity(MAX_LOG_LINES),
             scroll_offset: 0,
@@ -98,6 +99,7 @@ impl App {
             input_mode: InputMode::Normal,
             search_input: String::new(),
             theme: Theme::default(),
+            rx,
         }
     }
 
@@ -150,14 +152,90 @@ impl App {
     }
 }
 
+impl TuiApp for App {
+    fn draw(&mut self, frame: &mut resq_tui::ratatui::Frame) {
+        // Drain incoming log entries before each render (capped to avoid UI stalls).
+        for _ in 0..MAX_INGEST_PER_FRAME {
+            match self.rx.try_recv() {
+                Ok(entry) => self.push_entry(entry),
+                Err(_) => break,
+            }
+        }
+        draw_ui(frame, self);
+    }
+
+    fn handle_key(&mut self, key: event::KeyEvent) -> anyhow::Result<bool> {
+        if key.kind != KeyEventKind::Press {
+            return Ok(true);
+        }
+
+        match self.input_mode {
+            InputMode::Search => match key.code {
+                KeyCode::Enter => {
+                    self.search_query = self.search_input.clone();
+                    self.input_mode = InputMode::Normal;
+                }
+                KeyCode::Esc => {
+                    self.search_input.clear();
+                    self.input_mode = InputMode::Normal;
+                }
+                KeyCode::Backspace => {
+                    self.search_input.pop();
+                }
+                KeyCode::Char(c) => {
+                    self.search_input.push(c);
+                }
+                _ => {}
+            },
+            InputMode::Normal => match key.code {
+                KeyCode::Char('q') | KeyCode::Esc => return Ok(false),
+                KeyCode::Char('/') => {
+                    self.input_mode = InputMode::Search;
+                    self.search_input = self.search_query.clone();
+                }
+                KeyCode::Char('f') => self.cycle_level_filter(),
+                KeyCode::Char('c') => {
+                    self.logs.clear();
+                    self.scroll_offset = 0;
+                }
+                KeyCode::Char('g') => {
+                    self.auto_scroll = true;
+                    self.scroll_offset = 0;
+                }
+                KeyCode::Up => {
+                    self.auto_scroll = false;
+                    self.scroll_offset += 1;
+                }
+                KeyCode::Down => {
+                    self.scroll_offset = self.scroll_offset.saturating_sub(1);
+                    if self.scroll_offset == 0 {
+                        self.auto_scroll = true;
+                    }
+                }
+                KeyCode::PageUp => {
+                    self.auto_scroll = false;
+                    self.scroll_offset += 20;
+                }
+                KeyCode::PageDown => {
+                    self.scroll_offset = self.scroll_offset.saturating_sub(20);
+                    if self.scroll_offset == 0 {
+                        self.auto_scroll = true;
+                    }
+                }
+                _ => {}
+            },
+        }
+        Ok(true)
+    }
+}
+
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let level_filter = args.level.as_deref().map(LogLevel::from_str_loose);
-    let mut app = App::new(level_filter, args.service.clone());
 
-    let (tx, mut rx) = mpsc::unbounded_channel::<LogEntry>();
+    let (tx, rx) = mpsc::unbounded_channel::<LogEntry>();
 
     let project_root = std::env::current_dir()?
         .ancestors()
@@ -179,87 +257,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    enable_raw_mode()?;
-    io::stdout().execute(EnterAlternateScreen)?;
-    let mut terminal = ratatui::init();
-
-    loop {
-        while let Ok(entry) = rx.try_recv() {
-            app.push_entry(entry);
-        }
-
-        terminal.draw(|f| draw_ui(f, &app))?;
-
-        if event::poll(Duration::from_millis(50))? {
-            if let Event::Key(key) = event::read()? {
-                if key.kind != KeyEventKind::Press {
-                    continue;
-                }
-
-                match app.input_mode {
-                    InputMode::Search => match key.code {
-                        KeyCode::Enter => {
-                            app.search_query = app.search_input.clone();
-                            app.input_mode = InputMode::Normal;
-                        }
-                        KeyCode::Esc => {
-                            app.search_input.clear();
-                            app.input_mode = InputMode::Normal;
-                        }
-                        KeyCode::Backspace => {
-                            app.search_input.pop();
-                        }
-                        KeyCode::Char(c) => {
-                            app.search_input.push(c);
-                        }
-                        _ => {}
-                    },
-                    InputMode::Normal => match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc => break,
-                        KeyCode::Char('/') => {
-                            app.input_mode = InputMode::Search;
-                            app.search_input = app.search_query.clone();
-                        }
-                        KeyCode::Char('f') => app.cycle_level_filter(),
-                        KeyCode::Char('c') => {
-                            app.logs.clear();
-                            app.scroll_offset = 0;
-                        }
-                        KeyCode::Char('g') => {
-                            app.auto_scroll = true;
-                            app.scroll_offset = 0;
-                        }
-                        KeyCode::Up => {
-                            app.auto_scroll = false;
-                            app.scroll_offset += 1;
-                        }
-                        KeyCode::Down => {
-                            app.scroll_offset = app.scroll_offset.saturating_sub(1);
-                            if app.scroll_offset == 0 {
-                                app.auto_scroll = true;
-                            }
-                        }
-                        KeyCode::PageUp => {
-                            app.auto_scroll = false;
-                            app.scroll_offset += 20;
-                        }
-                        KeyCode::PageDown => {
-                            app.scroll_offset = app.scroll_offset.saturating_sub(20);
-                            if app.scroll_offset == 0 {
-                                app.auto_scroll = true;
-                            }
-                        }
-                        _ => {}
-                    },
-                }
-            }
-        }
-    }
-
-    ratatui::restore();
-    disable_raw_mode()?;
-    io::stdout().execute(LeaveAlternateScreen)?;
-    Ok(())
+    let mut app = App::new(level_filter, args.service.clone(), rx);
+    let mut term = terminal::init()?;
+    let result = terminal::run_loop(&mut term, 50, &mut app);
+    terminal::restore();
+    result
 }
 
 fn draw_ui(f: &mut Frame, app: &App) {
@@ -439,7 +441,8 @@ mod tests {
 
     #[test]
     fn filtered_logs_level_filter() {
-        let mut app = App::new(Some(LogLevel::Error), None);
+        let (_tx, rx) = mpsc::unbounded_channel();
+        let mut app = App::new(Some(LogLevel::Error), None, rx);
         app.push_entry(make_entry("api", LogLevel::Info, "info msg"));
         app.push_entry(make_entry("api", LogLevel::Error, "error msg"));
         let filtered = app.filtered_logs();

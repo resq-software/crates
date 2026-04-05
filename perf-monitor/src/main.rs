@@ -37,20 +37,16 @@
 
 use std::{
     collections::{HashMap, VecDeque},
-    io::stdout,
     time::{Duration, Instant},
 };
 
 use anyhow::{Context, Result};
 use clap::Parser;
+use resq_tui::terminal;
 use resq_tui::{format_bytes, format_duration};
 
-use crossterm::{
-    event::{self, Event, KeyCode, KeyEventKind},
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-    ExecutableCommand,
-};
-use ratatui::{
+use resq_tui::crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
+use resq_tui::ratatui::{
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     symbols,
@@ -837,63 +833,65 @@ struct CliArgs {
     token: Option<String>,
 }
 
+impl App {
+    /// Handle a key event. Returns `false` to signal exit.
+    fn handle_key(&mut self, key: event::KeyEvent) -> Result<bool> {
+        if key.kind == KeyEventKind::Press {
+            match key.code {
+                KeyCode::Char('q') | KeyCode::Esc => return Ok(false),
+                KeyCode::Char('r') => self.reset(),
+                KeyCode::Char('p') => self.toggle_pause(),
+                KeyCode::Char('+' | '=') => self.increase_refresh_rate(),
+                KeyCode::Char('-' | '_') => self.decrease_refresh_rate(),
+                KeyCode::Char('h') => self.toggle_help(),
+                _ => {}
+            }
+        }
+        Ok(true)
+    }
+}
+
 fn main() -> Result<()> {
     let args = CliArgs::parse();
     let refresh_ms = args.refresh_ms.clamp(MIN_REFRESH_MS, MAX_REFRESH_MS);
 
-    // Setup terminal
-    enable_raw_mode()?;
-    stdout().execute(EnterAlternateScreen)?;
-
-    let mut terminal = ratatui::init();
+    let mut terminal = terminal::init()?;
     let mut app = App::new(args.url, args.token, refresh_ms)?;
 
-    // Initial fetch
+    // Initial fetch before entering the loop
     app.update();
 
-    let mut last_tick = Instant::now();
+    // Manual event loop: keeps blocking I/O (`update`) out of the draw call.
+    let poll_timeout = Duration::from_millis(50);
+    let result: Result<()> = (|| {
+        loop {
+            // 1. Tick-based network poll — only when the refresh interval has elapsed.
+            if app.last_fetch.elapsed() >= app.tick_rate() {
+                app.update();
+            }
 
-    loop {
-        // Draw
-        terminal.draw(|frame| draw(frame, &app))?;
+            // 2. Render the current state (pure, no I/O).
+            terminal.draw(|f| draw(f, &app))?;
 
-        // Handle events
-        let tick_rate = app.tick_rate();
-        let timeout = tick_rate.saturating_sub(last_tick.elapsed());
-        if event::poll(timeout)? {
-            if let Event::Key(key) = event::read()? {
-                if key.kind == KeyEventKind::Press {
-                    match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc => break,
-                        KeyCode::Char('c')
-                            if key.modifiers.contains(event::KeyModifiers::CONTROL) =>
-                        {
-                            break
-                        }
-                        KeyCode::Char('r') => app.reset(),
-                        KeyCode::Char('p') => app.toggle_pause(),
-                        KeyCode::Char('+' | '=') => app.increase_refresh_rate(),
-                        KeyCode::Char('-' | '_') => app.decrease_refresh_rate(),
-                        KeyCode::Char('h') => app.toggle_help(),
-                        _ => {}
+            // 3. Handle keyboard input.
+            if event::poll(poll_timeout)? {
+                if let Event::Key(key) = event::read()? {
+                    if key.modifiers.contains(KeyModifiers::CONTROL)
+                        && key.code == KeyCode::Char('c')
+                    {
+                        break;
+                    }
+                    if !app.handle_key(key)? {
+                        break;
                     }
                 }
             }
         }
+        Ok(())
+    })();
 
-        // Tick update
-        if last_tick.elapsed() >= tick_rate {
-            app.update();
-            last_tick = Instant::now();
-        }
-    }
-
-    // Restore terminal
-    ratatui::restore();
-    disable_raw_mode()?;
-    stdout().execute(LeaveAlternateScreen)?;
-
-    Ok(())
+    terminal::restore();
+    result
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

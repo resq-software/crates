@@ -27,20 +27,16 @@ mod docker;
 mod k8s;
 
 use std::collections::VecDeque;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use clap::Parser;
-use crossterm::{
-    event::{self, Event, KeyCode, KeyEventKind},
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen},
-    ExecutableCommand,
-};
-use ratatui::{
+use resq_tui::crossterm::event::{self, KeyCode, KeyEventKind};
+use resq_tui::ratatui::{
     prelude::*,
     widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph, Wrap},
 };
+use resq_tui::terminal::{self, TuiApp};
 use resq_tui::{self as tui, Theme};
 use tokio::sync::mpsc;
 
@@ -91,6 +87,8 @@ struct App {
     output_lines: VecDeque<String>,
     project_root: PathBuf,
     theme: Theme,
+    tx: mpsc::UnboundedSender<String>,
+    rx: mpsc::UnboundedReceiver<String>,
 }
 
 impl App {
@@ -99,6 +97,7 @@ impl App {
         service_state.select(Some(0));
         let mut action_state = ListState::default();
         action_state.select(Some(0));
+        let (tx, rx) = mpsc::unbounded_channel::<String>();
 
         Self {
             env,
@@ -110,6 +109,8 @@ impl App {
             output_lines: VecDeque::with_capacity(500),
             project_root,
             theme: Theme::default(),
+            tx,
+            rx,
         }
     }
 
@@ -170,8 +171,78 @@ impl App {
     }
 }
 
+impl TuiApp for App {
+    fn draw(&mut self, frame: &mut resq_tui::ratatui::Frame) {
+        // Drain any pending output from background tasks before rendering.
+        while let Ok(line) = self.rx.try_recv() {
+            self.push_output(line);
+        }
+        draw_ui(frame, self);
+    }
+
+    fn handle_key(&mut self, key: event::KeyEvent) -> anyhow::Result<bool> {
+        if key.kind != KeyEventKind::Press {
+            return Ok(true);
+        }
+        match key.code {
+            KeyCode::Char('q') | KeyCode::Esc => return Ok(false),
+            KeyCode::Tab => {
+                self.focus = if self.focus == Focus::Services {
+                    Focus::Actions
+                } else {
+                    Focus::Services
+                };
+            }
+            KeyCode::Char('e') => {
+                self.cycle_env();
+                self.refresh_status();
+            }
+            KeyCode::Up | KeyCode::Char('k') => self.move_selection(-1),
+            KeyCode::Down | KeyCode::Char('j') => self.move_selection(1),
+            KeyCode::Enter => {
+                if let (Some(action), Some(service)) =
+                    (self.selected_action(), self.selected_service())
+                {
+                    let action = action.to_string();
+                    let service = service.to_string();
+                    let env = self.env.clone();
+                    let root = self.project_root.clone();
+                    let tx_clone = self.tx.clone();
+                    self.push_output(format!(
+                        "=== EXECUTING {} ON {} [{}] ===",
+                        action.to_uppercase(),
+                        service.to_uppercase(),
+                        env.to_uppercase()
+                    ));
+                    if self.use_k8s {
+                        let svc = if ["deploy", "destroy", "status"].contains(&action.as_str()) {
+                            None
+                        } else {
+                            Some(service.as_str())
+                        };
+                        if let Err(err) = k8s::run_action(&root, &env, &action, svc, tx_clone) {
+                            self.push_output(format!("ERROR: {err}"));
+                        }
+                    } else {
+                        let svc = if action == "down" {
+                            None
+                        } else {
+                            Some(service.as_str())
+                        };
+                        if let Err(err) = docker::run_action(&root, &env, &action, svc, tx_clone) {
+                            self.push_output(format!("ERROR: {err}"));
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+        Ok(true)
+    }
+}
+
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let project_root = std::env::current_dir()?
         .ancestors()
@@ -191,80 +262,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut app = App::new(args.env, args.k8s, project_root);
     app.refresh_status();
-    let (tx, mut rx) = mpsc::unbounded_channel::<String>();
 
-    enable_raw_mode()?;
-    io::stdout().execute(EnterAlternateScreen)?;
-    let mut terminal = ratatui::init();
-
-    loop {
-        while let Ok(line) = rx.try_recv() {
-            app.push_output(line);
-        }
-        terminal.draw(|f| draw_ui(f, &mut app))?;
-
-        if event::poll(Duration::from_millis(50))? {
-            if let Event::Key(key) = event::read()? {
-                if key.kind != KeyEventKind::Press {
-                    continue;
-                }
-                match key.code {
-                    KeyCode::Char('q') | KeyCode::Esc => break,
-                    KeyCode::Tab => {
-                        app.focus = if app.focus == Focus::Services {
-                            Focus::Actions
-                        } else {
-                            Focus::Services
-                        }
-                    }
-                    KeyCode::Char('e') => {
-                        app.cycle_env();
-                        app.refresh_status();
-                    }
-                    KeyCode::Up | KeyCode::Char('k') => app.move_selection(-1),
-                    KeyCode::Down | KeyCode::Char('j') => app.move_selection(1),
-                    KeyCode::Enter => {
-                        if let (Some(action), Some(service)) =
-                            (app.selected_action(), app.selected_service())
-                        {
-                            let action = action.to_string();
-                            let service = service.to_string();
-                            let env = app.env.clone();
-                            let root = app.project_root.clone();
-                            let tx_clone = tx.clone();
-                            app.push_output(format!(
-                                "=== EXECUTING {} ON {} [{}] ===",
-                                action.to_uppercase(),
-                                service.to_uppercase(),
-                                env.to_uppercase()
-                            ));
-                            if app.use_k8s {
-                                let svc =
-                                    if ["deploy", "destroy", "status"].contains(&action.as_str()) {
-                                        None
-                                    } else {
-                                        Some(service.as_str())
-                                    };
-                                let _ = k8s::run_action(&root, &env, &action, svc, tx_clone);
-                            } else {
-                                let svc = if action == "down" {
-                                    None
-                                } else {
-                                    Some(service.as_str())
-                                };
-                                let _ = docker::run_action(&root, &env, &action, svc, tx_clone);
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-    }
-
-    ratatui::restore();
-    disable_raw_mode()?;
-    Ok(())
+    let mut term = terminal::init()?;
+    let result = terminal::run_loop(&mut term, 50, &mut app);
+    terminal::restore();
+    result
 }
 
 fn draw_ui(f: &mut Frame, app: &mut App) {
@@ -296,7 +298,7 @@ fn draw_ui(f: &mut Frame, app: &mut App) {
     );
 
     let body = Layout::default()
-        .direction(ratatui::layout::Direction::Horizontal)
+        .direction(Direction::Horizontal)
         .constraints([
             Constraint::Percentage(25),
             Constraint::Percentage(20),
@@ -429,12 +431,13 @@ fn run_non_interactive(
     action: &str,
     service: Option<&str>,
     use_k8s: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> anyhow::Result<()> {
     let (tx, rx) = mpsc::unbounded_channel::<String>();
     if use_k8s {
-        k8s::run_action(project_root, env, action, service, tx)?;
+        k8s::run_action(project_root, env, action, service, tx).map_err(|e| anyhow::anyhow!(e))?;
     } else {
-        docker::run_action(project_root, env, action, service, tx)?;
+        docker::run_action(project_root, env, action, service, tx)
+            .map_err(|e| anyhow::anyhow!(e))?;
     }
     let rt_rx = std::sync::Mutex::new(rx);
     loop {

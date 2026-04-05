@@ -27,9 +27,11 @@ name = "resq-deploy"
 path = "src/main.rs"
 
 [dependencies]
-# TUI
-ratatui = { workspace = true }
-crossterm = { workspace = true }
+# Shared TUI components (re-exports ratatui + crossterm)
+resq-tui = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
 
 # Async runtime
 tokio = { workspace = true }
@@ -43,9 +45,6 @@ clap = { workspace = true }
 
 # Time
 chrono = { workspace = true }
-
-# Shared TUI components
-resq-tui = { workspace = true }
 
 # [profile.release]
 

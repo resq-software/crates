@@ -31,10 +31,8 @@ ignore = "0.4"
 walkdir = { workspace = true }
 clap = { workspace = true }
 anyhow = { workspace = true }
-tokio = { workspace = true, features = ["full"] }
+tokio = { workspace = true }
 colored = "3.1"
-ratatui = { workspace = true }
-crossterm = { workspace = true }
 resq-tui = { workspace = true }
 
 [lints]
