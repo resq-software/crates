@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.13](https://github.com/resq-software/crates/compare/resq-clean-v0.1.12...resq-clean-v0.1.13) - 2026-04-05
+
+### Other
+
+- extract shared TUI terminal module and slim workspace deps ([#35](https://github.com/resq-software/crates/pull/35))
+- release v0.1.12 ([#33](https://github.com/resq-software/crates/pull/33))
+
 ## [0.1.12](https://github.com/resq-software/crates/compare/resq-clean-v0.1.11...resq-clean-v0.1.12) - 2026-04-03
 
 ### Other

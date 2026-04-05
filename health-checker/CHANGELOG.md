@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.13](https://github.com/resq-software/crates/compare/resq-health-v0.1.12...resq-health-v0.1.13) - 2026-04-05
+
+### Other
+
+- extract shared TUI terminal module and slim workspace deps ([#35](https://github.com/resq-software/crates/pull/35))
+
 ## [0.1.6](https://github.com/resq-software/crates/compare/resq-health-checker-v0.1.5...resq-health-checker-v0.1.6) - 2026-03-27
 
 ### Other
