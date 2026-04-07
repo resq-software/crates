@@ -12,16 +12,16 @@
 
 | Crate | Description | crates.io |
 | :--- | :--- | :--- |
-| [`resq-dsa`](resq-dsa/) | Data structures and algorithms -- zero dependencies | [![crates.io](https://img.shields.io/crates/v/resq-dsa?style=flat-square)](https://crates.io/crates/resq-dsa) |
-| [`resq-cli`](cli/) | Unified CLI entry point (`resq` binary) | [![crates.io](https://img.shields.io/crates/v/resq-cli?style=flat-square)](https://crates.io/crates/resq-cli) |
-| [`resq-tui`](resq-tui/) | Shared Ratatui component library for all TUI tools | [![crates.io](https://img.shields.io/crates/v/resq-tui?style=flat-square)](https://crates.io/crates/resq-tui) |
-| [`resq-health`](health-checker/) | Service health monitoring dashboard | [![crates.io](https://img.shields.io/crates/v/resq-health?style=flat-square)](https://crates.io/crates/resq-health) |
-| [`resq-deploy`](deploy-cli/) | Kubernetes and Docker Compose deployment TUI | [![crates.io](https://img.shields.io/crates/v/resq-deploy?style=flat-square)](https://crates.io/crates/resq-deploy) |
-| [`resq-logs`](log-viewer/) | Log aggregator and stream viewer | [![crates.io](https://img.shields.io/crates/v/resq-logs?style=flat-square)](https://crates.io/crates/resq-logs) |
-| [`resq-perf`](perf-monitor/) | Performance monitoring dashboard | [![crates.io](https://img.shields.io/crates/v/resq-perf?style=flat-square)](https://crates.io/crates/resq-perf) |
-| [`resq-flame`](flame-graph/) | CPU profiler and flame graph generator | [![crates.io](https://img.shields.io/crates/v/resq-flame?style=flat-square)](https://crates.io/crates/resq-flame) |
-| [`resq-bin`](bin-explorer/) | Machine code and binary analyzer | [![crates.io](https://img.shields.io/crates/v/resq-bin?style=flat-square)](https://crates.io/crates/resq-bin) |
-| [`resq-clean`](cleanup/) | Interactive workspace cleaner | [![crates.io](https://img.shields.io/crates/v/resq-clean?style=flat-square)](https://crates.io/crates/resq-clean) |
+| [`resq-dsa`](crates/resq-dsa/) | Data structures and algorithms -- zero dependencies | [![crates.io](https://img.shields.io/crates/v/resq-dsa?style=flat-square)](https://crates.io/crates/resq-dsa) |
+| [`resq-cli`](crates/cli/) | Unified CLI entry point (`resq` binary) | [![crates.io](https://img.shields.io/crates/v/resq-cli?style=flat-square)](https://crates.io/crates/resq-cli) |
+| [`resq-tui`](crates/resq-tui/) | Shared Ratatui component library for all TUI tools | [![crates.io](https://img.shields.io/crates/v/resq-tui?style=flat-square)](https://crates.io/crates/resq-tui) |
+| [`resq-health`](crates/health-checker/) | Service health monitoring dashboard | [![crates.io](https://img.shields.io/crates/v/resq-health?style=flat-square)](https://crates.io/crates/resq-health) |
+| [`resq-deploy`](crates/deploy-cli/) | Kubernetes and Docker Compose deployment TUI | [![crates.io](https://img.shields.io/crates/v/resq-deploy?style=flat-square)](https://crates.io/crates/resq-deploy) |
+| [`resq-logs`](crates/log-viewer/) | Log aggregator and stream viewer | [![crates.io](https://img.shields.io/crates/v/resq-logs?style=flat-square)](https://crates.io/crates/resq-logs) |
+| [`resq-perf`](crates/perf-monitor/) | Performance monitoring dashboard | [![crates.io](https://img.shields.io/crates/v/resq-perf?style=flat-square)](https://crates.io/crates/resq-perf) |
+| [`resq-flame`](crates/flame-graph/) | CPU profiler and flame graph generator | [![crates.io](https://img.shields.io/crates/v/resq-flame?style=flat-square)](https://crates.io/crates/resq-flame) |
+| [`resq-bin`](crates/bin-explorer/) | Machine code and binary analyzer | [![crates.io](https://img.shields.io/crates/v/resq-bin?style=flat-square)](https://crates.io/crates/resq-bin) |
+| [`resq-clean`](crates/cleanup/) | Interactive workspace cleaner | [![crates.io](https://img.shields.io/crates/v/resq-clean?style=flat-square)](https://crates.io/crates/resq-clean) |
 
 ---
 

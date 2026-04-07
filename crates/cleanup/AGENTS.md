@@ -39,4 +39,4 @@ cargo test -p resq-clean
 
 ## References
 - [README](README.md)
-- [Tools Guide](../AGENTS.md)
+- [Tools Guide](../../AGENTS.md)

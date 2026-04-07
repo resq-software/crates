@@ -41,4 +41,4 @@ cargo test -p resq-bin
 
 ## References
 - [README](README.md)
-- [Tools Guide](../AGENTS.md)
+- [Tools Guide](../../AGENTS.md)

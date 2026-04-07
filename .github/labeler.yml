@@ -15,43 +15,43 @@
 # Crate labels
 "crate:resq-dsa":
   - changed-files:
-    - any-glob-to-any-file: resq-dsa/**/*
+    - any-glob-to-any-file: crates/resq-dsa/**/*
 
 "crate:cli":
   - changed-files:
-    - any-glob-to-any-file: cli/**/*
+    - any-glob-to-any-file: crates/cli/**/*
 
 "crate:tui":
   - changed-files:
-    - any-glob-to-any-file: resq-tui/**/*
+    - any-glob-to-any-file: crates/resq-tui/**/*
 
 "crate:bin-explorer":
   - changed-files:
-    - any-glob-to-any-file: bin-explorer/**/*
+    - any-glob-to-any-file: crates/bin-explorer/**/*
 
 "crate:cleanup":
   - changed-files:
-    - any-glob-to-any-file: cleanup/**/*
+    - any-glob-to-any-file: crates/cleanup/**/*
 
 "crate:deploy-cli":
   - changed-files:
-    - any-glob-to-any-file: deploy-cli/**/*
+    - any-glob-to-any-file: crates/deploy-cli/**/*
 
 "crate:flame-graph":
   - changed-files:
-    - any-glob-to-any-file: flame-graph/**/*
+    - any-glob-to-any-file: crates/flame-graph/**/*
 
 "crate:health-checker":
   - changed-files:
-    - any-glob-to-any-file: health-checker/**/*
+    - any-glob-to-any-file: crates/health-checker/**/*
 
 "crate:log-viewer":
   - changed-files:
-    - any-glob-to-any-file: log-viewer/**/*
+    - any-glob-to-any-file: crates/log-viewer/**/*
 
 "crate:perf-monitor":
   - changed-files:
-    - any-glob-to-any-file: perf-monitor/**/*
+    - any-glob-to-any-file: crates/perf-monitor/**/*
 
 # Governance & CI
 "A-DevOps":

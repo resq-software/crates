@@ -40,4 +40,4 @@ cargo test -p resq-logs
 
 ## References
 - [README](README.md)
-- [Tools Guide](../AGENTS.md)
+- [Tools Guide](../../AGENTS.md)

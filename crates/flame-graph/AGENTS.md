@@ -38,4 +38,4 @@ cargo test -p resq-flame
 
 ## References
 - [README](README.md)
-- [Tools Guide](../AGENTS.md)
+- [Tools Guide](../../AGENTS.md)

@@ -41,5 +41,5 @@ cargo test -p resq-deploy
 
 ## References
 - [README](README.md)
-- [Infrastructure Guide](../../infra/AGENTS.md)
-- [Tools Guide](../AGENTS.md)
+- [Infrastructure Guide](../../../infra/AGENTS.md)
+- [Tools Guide](../../AGENTS.md)
