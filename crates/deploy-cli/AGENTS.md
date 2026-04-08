@@ -26,7 +26,7 @@ cargo test -p resq-deploy
 ## Rules
 - Every mutating action must support a non-interactive path for automation.
 - Environment selection must stay explicit: `dev`, `staging`, or `prod`.
-- Keep Docker and Kubernetes behaviors aligned with `infra/docker/` and `infra/k8s/overlays/`.
+- Keep Docker and Kubernetes behaviors consistent between Compose and Kubernetes action paths.
 - `AGENTS.md` is the source of truth for the local `CLAUDE.md` mirror — never edit `CLAUDE.md` directly.
 
 ## Safety
@@ -41,5 +41,4 @@ cargo test -p resq-deploy
 
 ## References
 - [README](README.md)
-- [Infrastructure Guide](../../../infra/AGENTS.md)
 - [Tools Guide](../../AGENTS.md)

@@ -14,16 +14,7 @@
 
 [workspace]
 members = [
-    "crates/resq-tui",
-    "crates/cli",
-    "crates/deploy-cli",
-    "crates/health-checker",
-    "crates/log-viewer",
-    "crates/perf-monitor",
-    "crates/flame-graph",
-    "crates/bin-explorer",
-    "crates/cleanup",
-    "crates/resq-dsa",
+    "crates/*",
 ]
 resolver = "2"
 
