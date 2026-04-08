@@ -4,16 +4,17 @@
 Crate registry and developer tooling for the ResQ platform. This workspace contains all Rust crates published to crates.io: a zero-dependency data structures library and a suite of CLI/TUI tools for auditing, deployment, performance monitoring, and repository maintenance.
 
 ## Workspace Layout
-- `resq-dsa/` — Data structures and algorithms library (zero dependencies, `no_std`-compatible).
-- `cli/` — The main `resq` CLI tool (entry point).
-- `resq-tui/` — Shared component library for all TUI tools.
-- `bin-explorer/` — Machine code and binary analyzer (`resq-bin`).
-- `cleanup/` — Workspace cleaner (`resq-clean`).
-- `deploy-cli/` — Environment manager (`resq-deploy`).
-- `flame-graph/` — CPU profiler (`resq-flame`).
-- `health-checker/` — Service health monitor (`resq-health`).
-- `log-viewer/` — Log aggregator (`resq-logs`).
-- `perf-monitor/` — Performance dashboard (`resq-perf`).
+All crates live under the `crates/` directory:
+- `crates/resq-dsa/` — Data structures and algorithms library (zero dependencies, `no_std`-compatible).
+- `crates/cli/` — The main `resq` CLI tool (entry point).
+- `crates/resq-tui/` — Shared component library for all TUI tools.
+- `crates/bin-explorer/` — Machine code and binary analyzer (`resq-bin`).
+- `crates/cleanup/` — Workspace cleaner (`resq-clean`).
+- `crates/deploy-cli/` — Environment manager (`resq-deploy`).
+- `crates/flame-graph/` — CPU profiler (`resq-flame`).
+- `crates/health-checker/` — Service health monitor (`resq-health`).
+- `crates/log-viewer/` — Log aggregator (`resq-logs`).
+- `crates/perf-monitor/` — Performance dashboard (`resq-perf`).
 
 ## Shared Standards
 - **Runtime**: Rust (latest stable).
@@ -47,4 +48,4 @@ cargo test -p resq-dsa -- --ignored  # Run complexity benchmarks
 
 ## References
 - [Root README](README.md)
-- [Individual Crate READMEs](cli/README.md, resq-tui/README.md, etc.)
+- [Individual Crate READMEs](crates/cli/README.md, crates/resq-tui/README.md, etc.)
