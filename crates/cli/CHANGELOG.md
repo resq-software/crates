@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4](https://github.com/resq-software/crates/compare/resq-cli-v0.2.3...resq-cli-v0.2.4) - 2026-04-08
+
+### Other
+
+- apply PR review feedback — glob members, fix deploy-cli broken links, sync CLAUDE.md ([#36](https://github.com/resq-software/crates/pull/36))
+
 ## [0.2.3](https://github.com/resq-software/crates/compare/resq-cli-v0.2.2...resq-cli-v0.2.3) - 2026-03-27
 
 ### Other
