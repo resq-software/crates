@@ -17,34 +17,40 @@ This monorepo contains 10 published Rust crates: a zero-dependency data structur
 ```mermaid
 graph TB
     subgraph Libraries
-        DSA["resq-dsa<br/>Data Structures & Algorithms<br/><i>zero deps, no_std</i>"]
-        TUI["resq-tui<br/>Shared TUI Components<br/><i>Ratatui + Crossterm</i>"]
+        DSA[resq-dsa\nData Structures & Algorithms\nzero deps, no_std]
+        TUI[resq-tui\nShared TUI Components\nRatatui + Crossterm]
     end
 
-    subgraph CLI["Unified CLI"]
-        RESQ["resq-cli<br/><code>resq</code> binary"]
+    subgraph CLI[Unified CLI]
+        RESQ[resq-cli\nresq binary]
     end
 
-    subgraph Tools["Developer Tools"]
-        HEALTH["resq-health<br/>Service Health Monitor"]
-        DEPLOY["resq-deploy<br/>Deployment Manager"]
-        LOGS["resq-logs<br/>Log Aggregator"]
-        PERF["resq-perf<br/>Performance Dashboard"]
-        FLAME["resq-flame<br/>CPU Profiler"]
-        BIN["resq-bin<br/>Binary Analyzer"]
-        CLEAN["resq-clean<br/>Workspace Cleaner"]
+    subgraph Tools[Developer Tools]
+        HEALTH[resq-health\nService Health Monitor]
+        DEPLOY[resq-deploy\nDeployment Manager]
+        LOGS[resq-logs\nLog Aggregator]
+        PERF[resq-perf\nPerformance Dashboard]
+        FLAME[resq-flame\nCPU Profiler]
+        BIN[resq-bin\nBinary Analyzer]
+        CLEAN[resq-clean\nWorkspace Cleaner]
     end
 
-    RESQ -->|"resq health"| HEALTH
-    RESQ -->|"resq deploy"| DEPLOY
-    RESQ -->|"resq logs"| LOGS
-    RESQ -->|"resq perf"| PERF
-    RESQ -->|"resq flame"| FLAME
-    RESQ -->|"resq asm"| BIN
-    RESQ -->|"resq clean"| CLEAN
+    RESQ -->|resq health| HEALTH
+    RESQ -->|resq deploy| DEPLOY
+    RESQ -->|resq logs| LOGS
+    RESQ -->|resq perf| PERF
+    RESQ -->|resq flame| FLAME
+    RESQ -->|resq asm| BIN
+    RESQ -->|resq clean| CLEAN
 
-    TUI -.->|shared components| HEALTH & DEPLOY & LOGS & PERF & FLAME & BIN & CLEAN
-    RESQ -.->|uses| TUI
+    TUI -.-> HEALTH
+    TUI -.-> DEPLOY
+    TUI -.-> LOGS
+    TUI -.-> PERF
+    TUI -.-> FLAME
+    TUI -.-> BIN
+    TUI -.-> CLEAN
+    RESQ -.-> TUI
 ```
 
 ## Packages
