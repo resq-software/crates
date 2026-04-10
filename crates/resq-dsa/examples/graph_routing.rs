@@ -21,6 +21,8 @@
 //!
 //! Run: `cargo run -p resq-dsa --example graph_routing`
 
+#![allow(clippy::too_many_lines)]
+
 use resq_dsa::graph::Graph;
 
 /// Station with a name and (x, y) grid coordinates for the A* heuristic.
@@ -36,29 +38,87 @@ fn main() {
     // --- Build the transit network ---
     // Stations laid out on a rough grid for the A* heuristic.
     let stations = [
-        Station { name: "Airport",       x: 0,  y: 0 },
-        Station { name: "Terminal",      x: 2,  y: 0 },
-        Station { name: "Downtown",      x: 4,  y: 1 },
-        Station { name: "Central",       x: 5,  y: 3 },
-        Station { name: "Harbor",        x: 3,  y: 0 },
-        Station { name: "Market",        x: 6,  y: 1 },
-        Station { name: "Park",          x: 4,  y: 4 },
-        Station { name: "University",    x: 8,  y: 4 },
-        Station { name: "Stadium",       x: 7,  y: 2 },
-        Station { name: "Hospital",      x: 6,  y: 5 },
-        Station { name: "Museum",        x: 3,  y: 3 },
-        Station { name: "Library",       x: 5,  y: 5 },
-        Station { name: "Tech Hub",      x: 9,  y: 3 },
-        Station { name: "Suburbs",       x: 10, y: 5 },
+        Station {
+            name: "Airport",
+            x: 0,
+            y: 0,
+        },
+        Station {
+            name: "Terminal",
+            x: 2,
+            y: 0,
+        },
+        Station {
+            name: "Downtown",
+            x: 4,
+            y: 1,
+        },
+        Station {
+            name: "Central",
+            x: 5,
+            y: 3,
+        },
+        Station {
+            name: "Harbor",
+            x: 3,
+            y: 0,
+        },
+        Station {
+            name: "Market",
+            x: 6,
+            y: 1,
+        },
+        Station {
+            name: "Park",
+            x: 4,
+            y: 4,
+        },
+        Station {
+            name: "University",
+            x: 8,
+            y: 4,
+        },
+        Station {
+            name: "Stadium",
+            x: 7,
+            y: 2,
+        },
+        Station {
+            name: "Hospital",
+            x: 6,
+            y: 5,
+        },
+        Station {
+            name: "Museum",
+            x: 3,
+            y: 3,
+        },
+        Station {
+            name: "Library",
+            x: 5,
+            y: 5,
+        },
+        Station {
+            name: "Tech Hub",
+            x: 9,
+            y: 3,
+        },
+        Station {
+            name: "Suburbs",
+            x: 10,
+            y: 5,
+        },
         // Disconnected station — no edges lead here.
-        Station { name: "Ghost Station", x: 20, y: 20 },
+        Station {
+            name: "Ghost Station",
+            x: 20,
+            y: 20,
+        },
     ];
 
     // Build coordinate lookup for A* heuristic.
-    let coords: std::collections::HashMap<&str, (i64, i64)> = stations
-        .iter()
-        .map(|s| (s.name, (s.x, s.y)))
-        .collect();
+    let coords: std::collections::HashMap<&str, (i64, i64)> =
+        stations.iter().map(|s| (s.name, (s.x, s.y))).collect();
 
     let mut g = Graph::<&str>::new();
 
@@ -131,7 +191,7 @@ fn main() {
     match g.astar(&"Airport", &"University", |node, _goal| {
         let (nx, ny) = coords[node];
         let (gx, gy) = goal_coords;
-        ((nx - gx).unsigned_abs() + (ny - gy).unsigned_abs())
+        (nx - gx).unsigned_abs() + (ny - gy).unsigned_abs()
     }) {
         Some((path, cost)) => {
             print!("  Path: ");
@@ -149,14 +209,11 @@ fn main() {
 
     // --- 4. Unreachable destination ---
     println!("\n--- 4. Dijkstra: Central → Ghost Station ---");
-    match g.dijkstra(&"Central", &"Ghost Station") {
-        Some((path, cost)) => {
-            println!("  Path found: {path:?} (cost: {cost})");
-        }
-        None => {
-            println!("  No path found — Ghost Station is disconnected from the network.");
-            println!("  Dijkstra correctly returns None for unreachable destinations.");
-        }
+    if let Some((path, cost)) = g.dijkstra(&"Central", &"Ghost Station") {
+        println!("  Path found: {path:?} (cost: {cost})");
+    } else {
+        println!("  No path found — Ghost Station is disconnected from the network.");
+        println!("  Dijkstra correctly returns None for unreachable destinations.");
     }
 
     println!("\n=== Key Takeaway ===");

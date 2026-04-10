@@ -35,7 +35,10 @@ impl Lcg {
     }
 
     fn next(&mut self) -> u64 {
-        self.0 = self.0.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        self.0 = self
+            .0
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1);
         self.0
     }
 
@@ -79,7 +82,10 @@ fn main() {
     let mut rng = Lcg::new(42);
 
     // --- Phase 1: Simulate traffic ---
-    println!("Phase 1: Simulating {total_requests} API requests across {} endpoints...\n", endpoints.len());
+    println!(
+        "Phase 1: Simulating {total_requests} API requests across {} endpoints...\n",
+        endpoints.len()
+    );
     for _ in 0..total_requests {
         let r = rng.next_bound(total_weight);
         let mut cumulative = 0u64;
@@ -111,17 +117,18 @@ fn main() {
         if estimate < count {
             all_gte = false;
         }
-        println!(
-            "  {:<35} {:>8} {:>8} {:>+8}",
-            endpoint, count, estimate, error
-        );
+        println!("  {endpoint:<35} {count:>8} {estimate:>8} {error:>+8}");
     }
 
     // --- Phase 3: Verify the "never undercounts" guarantee ---
     println!("\nPhase 3: Verifying guarantees...");
     println!(
         "  All estimates >= actual: {}",
-        if all_gte { "YES (as guaranteed)" } else { "NO (unexpected!)" }
+        if all_gte {
+            "YES (as guaranteed)"
+        } else {
+            "NO (unexpected!)"
+        }
     );
 
     let max_error: u64 = sorted

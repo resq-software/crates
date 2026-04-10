@@ -19,13 +19,20 @@
 //! Uses **all five** resq-dsa data structures together in a realistic scenario:
 //! processing incoming sensor alerts for a disaster response system.
 //!
-//! 1. **BloomFilter** — deduplicate alert IDs from unreliable sensor streams
-//! 2. **CountMinSketch** — track alert-type frequencies in fixed memory
-//! 3. **Graph** — find optimal response routes between zones
-//! 4. **BoundedHeap** — keep the top-5 most critical alerts for dispatch
-//! 5. **Trie + rabin_karp** — match alerts to response protocols
+//! 1. `BloomFilter` — deduplicate alert IDs from unreliable sensor streams
+//! 2. `CountMinSketch` — track alert-type frequencies in fixed memory
+//! 3. `Graph` — find optimal response routes between zones
+//! 4. `BoundedHeap` — keep the top-5 most critical alerts for dispatch
+//! 5. `Trie` + `rabin_karp` — match alerts to response protocols
 //!
 //! Run: `cargo run -p resq-dsa --example combined_pipeline`
+
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_lossless,
+    clippy::too_many_lines
+)]
 
 use resq_dsa::bloom::BloomFilter;
 use resq_dsa::count_min::CountMinSketch;
@@ -41,7 +48,10 @@ impl Lcg {
         Self(seed)
     }
     fn next(&mut self) -> u64 {
-        self.0 = self.0.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        self.0 = self
+            .0
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1);
         self.0
     }
     fn next_bound(&mut self, bound: u64) -> u64 {
@@ -52,7 +62,7 @@ impl Lcg {
 #[derive(Debug)]
 struct Alert {
     id: String,
-    alert_type: &'static str,
+    kind: &'static str,
     zone: &'static str,
     severity: u32,
     description: String,
@@ -64,7 +74,14 @@ fn main() {
     println!("║   Using all 5 resq-dsa data structures                  ║");
     println!("╚══════════════════════════════════════════════════════════╝\n");
 
-    let alert_types = ["fire", "flood", "earthquake", "chemical", "structural", "medical"];
+    let alert_types = [
+        "fire",
+        "flood",
+        "earthquake",
+        "chemical",
+        "structural",
+        "medical",
+    ];
     let zones = ["Zone-A", "Zone-B", "Zone-C", "Zone-D", "Zone-E"];
     let mut rng = Lcg::new(2026);
 
@@ -82,7 +99,13 @@ fn main() {
         let zone = zones[rng.next_bound(zones.len() as u64) as usize];
         let severity = (rng.next_bound(10) + 1) as u32;
         let description = format!("{atype} detected in {zone} — severity {severity}");
-        alerts.push(Alert { id, alert_type: atype, zone, severity, description });
+        alerts.push(Alert {
+            id,
+            kind: atype,
+            zone,
+            severity,
+            description,
+        });
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -113,8 +136,8 @@ fn main() {
     let mut actual_counts: std::collections::HashMap<&str, u64> = std::collections::HashMap::new();
 
     for alert in &unique_alerts {
-        cms.increment(alert.alert_type, 1);
-        *actual_counts.entry(alert.alert_type).or_default() += 1;
+        cms.increment(alert.kind, 1);
+        *actual_counts.entry(alert.kind).or_default() += 1;
     }
 
     println!("  {:<15} {:>8} {:>8}", "Type", "Actual", "Estimate");
@@ -123,7 +146,7 @@ fn main() {
     sorted_types.sort_by(|a, b| b.1.cmp(a.1));
     for (atype, &count) in &sorted_types {
         let est = cms.estimate(atype);
-        println!("  {:<15} {:>8} {:>8}", atype, count, est);
+        println!("  {atype:<15} {count:>8} {est:>8}");
     }
     let most_common = sorted_types[0].0;
     println!("\n  Most common alert type: \"{most_common}\"\n");
@@ -154,15 +177,13 @@ fn main() {
     // Route responders to the zone with the most common alert type.
     let target_zone = unique_alerts
         .iter()
-        .filter(|a| a.alert_type == *most_common)
-        .next()
-        .map(|a| a.zone)
-        .unwrap_or("Zone-A");
+        .find(|a| a.kind == *most_common)
+        .map_or("Zone-A", |a| a.zone);
 
     println!("  Routing from HQ to {target_zone} (highest-frequency alert zone)...");
     match graph.dijkstra(&"HQ", &target_zone) {
         Some((path, cost)) => {
-            let path_str: Vec<_> = path.iter().map(|s| *s).collect();
+            let path_str = path.clone();
             println!("  Route: {}", path_str.join(" → "));
             println!("  Travel time: {cost} minutes");
         }
@@ -183,19 +204,19 @@ fn main() {
     // BoundedHeap keeps items with the *smallest* distance, so we use
     // negative score as the "distance" to keep the highest-scored alerts.
     let mut heap = BoundedHeap::new(top_k, |a: &&Alert| {
-        let freq = cms.estimate(a.alert_type);
+        let freq = cms.estimate(a.kind);
         let score = a.severity as f64 * freq as f64;
         -score // Negate so BoundedHeap keeps highest scores.
     });
 
     for alert in &unique_alerts {
-        heap.insert(&alert);
+        heap.insert(alert);
     }
 
     println!("  Top {top_k} most critical alerts for dispatch:");
     let prioritized = heap.to_sorted();
     for (i, alert) in prioritized.iter().enumerate() {
-        let freq = cms.estimate(alert.alert_type);
+        let freq = cms.estimate(alert.kind);
         let score = alert.severity as f64 * freq as f64;
         println!(
             "    #{}: [{}] {} (severity: {}, freq: ~{}, score: {:.0})",
@@ -249,7 +270,14 @@ fn main() {
     if let Some(top_alert) = prioritized.first() {
         println!("\n  Scanning top alert description for keywords...");
         println!("  Text: \"{}\"", top_alert.description);
-        for keyword in &["fire", "flood", "earthquake", "chemical", "structural", "medical"] {
+        for keyword in &[
+            "fire",
+            "flood",
+            "earthquake",
+            "chemical",
+            "structural",
+            "medical",
+        ] {
             let hits = rabin_karp(&top_alert.description, keyword);
             if !hits.is_empty() {
                 println!("    Found \"{keyword}\" at positions: {hits:?}");
@@ -264,9 +292,18 @@ fn main() {
     println!("║   Pipeline Summary                                      ║");
     println!("╠══════════════════════════════════════════════════════════╣");
     println!("║  BloomFilter:     {duplicates:>5} duplicates filtered              ║");
-    println!("║  CountMinSketch:  {:>5} unique alerts tracked            ║", unique_alerts.len());
-    println!("║  Graph:           {:>5} zones reachable from HQ          ║", reachable.len());
-    println!("║  BoundedHeap:     {:>5} top alerts for dispatch          ║", top_k);
-    println!("║  Trie:            {:>5} response protocols loaded        ║", protocol_list.len());
+    println!(
+        "║  CountMinSketch:  {:>5} unique alerts tracked            ║",
+        unique_alerts.len()
+    );
+    println!(
+        "║  Graph:           {:>5} zones reachable from HQ          ║",
+        reachable.len()
+    );
+    println!("║  BoundedHeap:     {top_k:>5} top alerts for dispatch          ║");
+    println!(
+        "║  Trie:            {:>5} response protocols loaded        ║",
+        protocol_list.len()
+    );
     println!("╚══════════════════════════════════════════════════════════╝");
 }

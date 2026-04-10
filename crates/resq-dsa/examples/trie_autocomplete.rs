@@ -21,6 +21,8 @@
 //!
 //! Run: `cargo run -p resq-dsa --example trie_autocomplete`
 
+#![allow(clippy::too_many_lines)]
+
 use resq_dsa::trie::{rabin_karp, Trie};
 
 fn main() {
@@ -73,17 +75,29 @@ fn main() {
         "version:changelog",
     ];
 
-    println!("Phase 1: Loading {} commands into trie...\n", commands.len());
+    println!(
+        "Phase 1: Loading {} commands into trie...\n",
+        commands.len()
+    );
     for cmd in &commands {
         trie.insert(cmd);
     }
 
     // --- Phase 2: Exact search ---
     println!("Phase 2: Exact search");
-    let tests = [("deploy", true), ("dep", false), ("health:check", true), ("xyz", false)];
+    let tests = [
+        ("deploy", true),
+        ("dep", false),
+        ("health:check", true),
+        ("xyz", false),
+    ];
     for (query, expected) in &tests {
         let found = trie.search(query);
-        let status = if found == *expected { "OK" } else { "UNEXPECTED" };
+        let status = if found == *expected {
+            "OK"
+        } else {
+            "UNEXPECTED"
+        };
         println!("  search(\"{query}\") → {found} [{status}]");
     }
 
@@ -101,7 +115,10 @@ fn main() {
     }
 
     // --- Phase 4: Non-existent prefix ---
-    println!("\n  starts_with(\"xyz\") → {} matches", trie.starts_with("xyz").len());
+    println!(
+        "\n  starts_with(\"xyz\") → {} matches",
+        trie.starts_with("xyz").len()
+    );
 
     // --- Phase 5: Rabin-Karp pattern matching ---
     println!("\nPhase 4: Rabin-Karp pattern matching in command log");
@@ -115,11 +132,19 @@ fn main() {
 
     println!("  Searching for \"deploy\" in command log...");
     let positions = rabin_karp(log, "deploy");
-    println!("  Found {} occurrences at char positions: {:?}", positions.len(), positions);
+    println!(
+        "  Found {} occurrences at char positions: {:?}",
+        positions.len(),
+        positions
+    );
 
     println!("\n  Searching for \"health:check\" in command log...");
     let positions = rabin_karp(log, "health:check");
-    println!("  Found {} occurrences at char positions: {:?}", positions.len(), positions);
+    println!(
+        "  Found {} occurrences at char positions: {:?}",
+        positions.len(),
+        positions
+    );
 
     println!("\n=== Key Takeaway ===");
     println!("Tries give O(m) prefix search — ideal for autocomplete and routing tables.");

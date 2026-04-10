@@ -23,6 +23,13 @@
 //!
 //! Run: `cargo run -p resq-dsa --example bloom_dedup`
 
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_lossless,
+    clippy::too_many_lines
+)]
+
 use resq_dsa::bloom::BloomFilter;
 use std::collections::HashSet;
 
@@ -88,9 +95,16 @@ fn main() {
     // --- Phase 5: Clear and reuse ---
     println!("\nPhase 5: Clear and reuse...");
     bf.clear();
-    println!("  After clear — len: {}, is_empty: {}", bf.len(), bf.is_empty());
+    println!(
+        "  After clear — len: {}, is_empty: {}",
+        bf.len(),
+        bf.is_empty()
+    );
     bf.add("https://new-crawl.com/start");
-    println!("  After re-adding one URL — has it: {}", bf.has("https://new-crawl.com/start"));
+    println!(
+        "  After re-adding one URL — has it: {}",
+        bf.has("https://new-crawl.com/start")
+    );
 
     println!("\n=== Key Takeaway ===");
     println!("Bloom filters trade a small false positive rate for massive memory savings.");

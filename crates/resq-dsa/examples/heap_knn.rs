@@ -22,6 +22,8 @@
 //!
 //! Run: `cargo run -p resq-dsa --example heap_knn`
 
+#![allow(clippy::cast_precision_loss, clippy::too_many_lines)]
+
 use resq_dsa::heap::BoundedHeap;
 
 #[derive(Debug)]
@@ -45,7 +47,10 @@ impl Lcg {
 
     /// Generate a float in [-range, +range].
     fn next_f64(&mut self, range: f64) -> f64 {
-        self.0 = self.0.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        self.0 = self
+            .0
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1);
         // Map to [0, 1) then scale to [-range, +range].
         let normalized = (self.0 >> 11) as f64 / (1u64 << 53) as f64;
         (normalized * 2.0 - 1.0) * range
@@ -57,7 +62,11 @@ fn main() {
 
     let k = 5;
     let num_points = 1_000;
-    let query = Point { id: 0, x: 0.0, y: 0.0 };
+    let query = Point {
+        id: 0,
+        x: 0.0,
+        y: 0.0,
+    };
     let mut rng = Lcg::new(12345);
 
     // --- Phase 1: Generate random points ---
@@ -71,11 +80,18 @@ fn main() {
         .collect();
 
     // --- Phase 2: Find K nearest using BoundedHeap ---
-    println!("Phase 2: Finding {k} nearest to query ({}, {})...\n", query.x, query.y);
+    println!(
+        "Phase 2: Finding {k} nearest to query ({}, {})...\n",
+        query.x, query.y
+    );
 
     let mut heap = BoundedHeap::new(k, |p: &Point| euclidean(p, &query));
     for p in &points {
-        heap.insert(Point { id: p.id, x: p.x, y: p.y });
+        heap.insert(Point {
+            id: p.id,
+            x: p.x,
+            y: p.y,
+        });
     }
 
     println!("  BoundedHeap results (nearest first):");
@@ -106,7 +122,11 @@ fn main() {
 
     let heap_ids: Vec<u32> = sorted.iter().map(|p| p.id).collect();
     let brute_ids: Vec<u32> = all_distances.iter().take(k).map(|(id, _)| *id).collect();
-    let match_status = if heap_ids == brute_ids { "MATCH" } else { "MISMATCH" };
+    let match_status = if heap_ids == brute_ids {
+        "MATCH"
+    } else {
+        "MISMATCH"
+    };
     println!("\n  Results: {match_status}");
 
     // --- Phase 4: Demonstrate streaming behavior ---
@@ -114,7 +134,10 @@ fn main() {
     println!("  Heap capacity: {k}");
     println!("  Items processed: {num_points}");
     println!("  Items kept: {}", heap.len());
-    println!("  The heap automatically evicted {} items with larger distances.", num_points as usize - heap.len());
+    println!(
+        "  The heap automatically evicted {} items with larger distances.",
+        num_points as usize - heap.len()
+    );
 
     println!("\n=== Key Takeaway ===");
     println!("BoundedHeap is O(n log k) vs O(n log n) for a full sort — significant when k << n.");
