@@ -87,10 +87,10 @@ resq-perf
 resq-perf http://localhost:5000/admin/status
 
 # Authenticated service with explicit token
-resq-perf --token eyJhbGciOiJIUzI1NiIs...
+resq-perf --token <your-bearer-token>
 
 # Use environment variable for authentication
-export RESQ_TOKEN=eyJhbGciOiJIUzI1NiIs...
+export RESQ_TOKEN="<your-bearer-token>"
 resq-perf http://localhost:3000/admin/status
 
 # Slower refresh rate (1 second) for low-bandwidth environments

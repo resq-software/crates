@@ -130,10 +130,7 @@ pub async fn run_logs(args: LogsArgs) -> Result<()> {
 
 /// Run resq-health (Health Explorer)
 pub async fn run_health(args: HealthArgs) -> Result<()> {
-    run_tool(
-        "resq-health",
-        &["--interval", &args.interval.to_string()],
-    )
+    run_tool("resq-health", &["--interval", &args.interval.to_string()])
 }
 
 /// Run resq-deploy (Deploy Explorer)
