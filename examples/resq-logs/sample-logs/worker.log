@@ -1,0 +1,66 @@
+2026-04-10T19:54:16.282Z INFO resq_worker::queue: Processing job #1000
+2026-04-10T19:54:16.283Z INFO resq_worker::queue: Job #1001 completed in 312ms
+2026-04-10T19:54:16.283Z ERROR resq_worker::connection: Redis connection lost, reconnecting...
+2026-04-10T19:54:16.283Z INFO resq_worker::health: Worker heartbeat: 45 jobs processed
+2026-04-10T19:54:16.283Z DEBUG resq_worker::scheduler: Polling queue, 6 jobs pending
+2026-04-10T19:54:16.283Z ERROR resq_worker::dlq: Job #1004 moved to dead letter queue after 3 failures
+2026-04-10T19:54:16.283Z DEBUG resq_worker::scheduler: Polling queue, 27 jobs pending
+2026-04-10T19:54:16.283Z INFO resq_worker::queue: Job #1005 completed in 396ms
+2026-04-10T19:54:16.283Z ERROR resq_worker::connection: Redis connection lost, reconnecting...
+2026-04-10T19:54:16.283Z ERROR resq_worker::dlq: Job #1006 moved to dead letter queue after 3 failures
+2026-04-10T19:54:16.283Z INFO resq_worker::queue: Job #1007 completed in 399ms
+2026-04-10T19:54:16.283Z WARN resq_worker::retry: Job #1008 failed, retrying (attempt 3/3)
+2026-04-10T19:54:16.283Z ERROR resq_worker::dlq: Job #1008 moved to dead letter queue after 3 failures
+2026-04-10T19:54:16.283Z INFO resq_worker::connection: Redis connection restored
+2026-04-10T19:54:16.283Z ERROR resq_worker::dlq: Job #1009 moved to dead letter queue after 3 failures
+2026-04-10T19:54:16.283Z ERROR resq_worker::dlq: Job #1010 moved to dead letter queue after 3 failures
+2026-04-10T19:54:16.283Z INFO resq_worker::queue: Job #1011 completed in 137ms
+2026-04-10T19:54:16.284Z INFO resq_worker::connection: Redis connection restored
+2026-04-10T19:54:16.284Z DEBUG resq_worker::scheduler: Polling queue, 45 jobs pending
+2026-04-10T19:54:16.284Z INFO resq_worker::connection: Redis connection restored
+2026-04-10T19:54:16.284Z WARN resq_worker::retry: Job #1012 failed, retrying (attempt 2/3)
+2026-04-10T19:54:16.284Z DEBUG resq_worker::scheduler: Polling queue, 21 jobs pending
+2026-04-10T19:54:16.284Z DEBUG resq_worker::scheduler: Polling queue, 28 jobs pending
+2026-04-10T19:54:16.284Z INFO resq_worker::health: Worker heartbeat: 9 jobs processed
+2026-04-10T19:54:16.284Z ERROR resq_worker::connection: Redis connection lost, reconnecting...
+2026-04-10T19:54:16.284Z ERROR resq_worker::connection: Redis connection lost, reconnecting...
+2026-04-10T19:54:16.284Z INFO resq_worker::health: Worker heartbeat: 32 jobs processed
+2026-04-10T19:54:16.284Z ERROR resq_worker::dlq: Job #1014 moved to dead letter queue after 3 failures
+2026-04-10T19:54:16.285Z INFO resq_worker::health: Worker heartbeat: 28 jobs processed
+2026-04-10T19:54:16.285Z WARN resq_worker::retry: Job #1014 failed, retrying (attempt 1/3)
+2026-04-10T19:54:16.285Z INFO resq_worker::health: Worker heartbeat: 43 jobs processed
+2026-04-10T19:54:16.285Z INFO resq_worker::queue: Job #1014 completed in 243ms
+2026-04-10T19:54:16.285Z ERROR resq_worker::connection: Redis connection lost, reconnecting...
+2026-04-10T19:54:16.285Z INFO resq_worker::queue: Job #1015 completed in 408ms
+2026-04-10T19:54:16.285Z INFO resq_worker::health: Worker heartbeat: 39 jobs processed
+2026-04-10T19:54:16.285Z INFO resq_worker::connection: Redis connection restored
+2026-04-10T19:54:16.285Z ERROR resq_worker::dlq: Job #1016 moved to dead letter queue after 3 failures
+2026-04-10T19:54:16.285Z ERROR resq_worker::dlq: Job #1016 moved to dead letter queue after 3 failures
+2026-04-10T19:54:16.285Z ERROR resq_worker::connection: Redis connection lost, reconnecting...
+2026-04-10T19:54:16.285Z WARN resq_worker::retry: Job #1016 failed, retrying (attempt 2/3)
+2026-04-10T19:54:16.285Z ERROR resq_worker::connection: Redis connection lost, reconnecting...
+2026-04-10T19:54:16.285Z INFO resq_worker::health: Worker heartbeat: 4 jobs processed
+2026-04-10T19:54:16.285Z INFO resq_worker::queue: Processing job #1018
+2026-04-10T19:54:16.285Z ERROR resq_worker::dlq: Job #1018 moved to dead letter queue after 3 failures
+2026-04-10T19:54:16.285Z INFO resq_worker::queue: Job #1019 completed in 408ms
+2026-04-10T19:54:16.285Z ERROR resq_worker::connection: Redis connection lost, reconnecting...
+2026-04-10T19:54:16.285Z ERROR resq_worker::dlq: Job #1021 moved to dead letter queue after 3 failures
+2026-04-10T19:54:16.285Z INFO resq_worker::queue: Job #1021 completed in 417ms
+2026-04-10T19:54:16.285Z INFO resq_worker::health: Worker heartbeat: 41 jobs processed
+2026-04-10T19:54:16.285Z ERROR resq_worker::connection: Redis connection lost, reconnecting...
+2026-04-10T19:54:16.285Z DEBUG resq_worker::scheduler: Polling queue, 5 jobs pending
+2026-04-10T19:54:16.285Z ERROR resq_worker::connection: Redis connection lost, reconnecting...
+2026-04-10T19:54:16.285Z INFO resq_worker::health: Worker heartbeat: 44 jobs processed
+2026-04-10T19:54:16.285Z ERROR resq_worker::dlq: Job #1023 moved to dead letter queue after 3 failures
+2026-04-10T19:54:16.285Z ERROR resq_worker::dlq: Job #1023 moved to dead letter queue after 3 failures
+2026-04-10T19:54:16.286Z ERROR resq_worker::dlq: Job #1023 moved to dead letter queue after 3 failures
+2026-04-10T19:54:16.286Z DEBUG resq_worker::scheduler: Polling queue, 18 jobs pending
+2026-04-10T19:54:16.286Z DEBUG resq_worker::scheduler: Polling queue, 35 jobs pending
+2026-04-10T19:54:16.286Z WARN resq_worker::retry: Job #1026 failed, retrying (attempt 3/3)
+2026-04-10T19:54:16.286Z ERROR resq_worker::connection: Redis connection lost, reconnecting...
+2026-04-10T19:54:16.286Z DEBUG resq_worker::scheduler: Polling queue, 10 jobs pending
+2026-04-10T19:54:16.286Z WARN resq_worker::retry: Job #1028 failed, retrying (attempt 2/3)
+2026-04-10T19:54:16.286Z ERROR resq_worker::dlq: Job #1028 moved to dead letter queue after 3 failures
+2026-04-10T19:54:16.286Z DEBUG resq_worker::scheduler: Polling queue, 29 jobs pending
+2026-04-10T19:54:16.286Z DEBUG resq_worker::scheduler: Polling queue, 31 jobs pending
+2026-04-10T19:54:16.286Z ERROR resq_worker::connection: Redis connection lost, reconnecting...

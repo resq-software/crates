@@ -1,0 +1,146 @@
+# Example docker-compose.yml for resq-deploy demo.
+#
+# Simulates the ResQ service fleet with lightweight containers.
+# Each service has a health check so resq-deploy can monitor status.
+#
+# Usage:
+#   1. Copy this to your project's infra/docker/ directory:
+#        mkdir -p infra/docker
+#        cp examples/resq-deploy/docker-compose.yml infra/docker/
+#
+#   2. Start with resq-deploy:
+#        cargo run -p resq-deploy
+#
+#   3. Or use non-interactive mode:
+#        cargo run -p resq-deploy -- --env dev --action status
+#        cargo run -p resq-deploy -- --env dev --action up
+
+services:
+  infrastructure-api:
+    image: python:3.12-alpine
+    command: >
+      python3 -c "
+      import http.server, json, socketserver
+
+      class H(http.server.BaseHTTPRequestHandler):
+          def do_GET(self):
+              if self.path == '/health':
+                  self.send_response(200)
+                  self.send_header('Content-Type', 'application/json')
+                  self.end_headers()
+                  self.wfile.write(json.dumps({'status': 'ok', 'service': 'infrastructure-api'}).encode())
+              else:
+                  self.send_response(404)
+                  self.end_headers()
+          def log_message(self, *a): pass
+
+      socketserver.TCPServer.allow_reuse_address = True
+      socketserver.TCPServer(('', 8080), H).serve_forever()
+      "
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  coordination-hce:
+    image: python:3.12-alpine
+    command: >
+      python3 -c "
+      import http.server, json, socketserver, time
+
+      START = time.time()
+      class H(http.server.BaseHTTPRequestHandler):
+          def do_GET(self):
+              if self.path == '/health':
+                  self.send_response(200)
+                  self.send_header('Content-Type', 'application/json')
+                  self.end_headers()
+                  up = int(time.time() - START)
+                  self.wfile.write(json.dumps({'status': 'ok', 'uptime': f'{up}s'}).encode())
+              elif self.path in ('/admin/status', '/status'):
+                  self.send_response(200)
+                  self.send_header('Content-Type', 'application/json')
+                  self.end_headers()
+                  up = int(time.time() - START)
+                  self.wfile.write(json.dumps({
+                      'uptime': f'{up}s',
+                      'uptimeNanoseconds': up * 1000000000,
+                      'memory': {
+                          'process': {'rss': 150000000, 'heapUsed': 40000000, 'heapTotal': 80000000, 'external': 5000000, 'arrayBuffers': 1000},
+                          'heap': {'heapSize': 40000000, 'heapCapacity': 80000000, 'extraMemorySize': 0, 'objectCount': 8000, 'protectedObjectCount': 100, 'globalObjectCount': 30, 'protectedGlobalObjectCount': 5, 'objectTypeCounts': {'Object': 3000, 'Array': 2000, 'String': 1500, 'Function': 500}}
+                      },
+                      'version': '1.0.0',
+                      'environment': 'dev'
+                  }).encode())
+              else:
+                  self.send_response(404)
+                  self.end_headers()
+          def log_message(self, *a): pass
+
+      socketserver.TCPServer.allow_reuse_address = True
+      socketserver.TCPServer(('', 5000), H).serve_forever()
+      "
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  intelligence-pdie:
+    image: python:3.12-alpine
+    command: >
+      python3 -c "
+      import http.server, json, socketserver
+
+      class H(http.server.BaseHTTPRequestHandler):
+          def do_GET(self):
+              if self.path == '/health':
+                  self.send_response(200)
+                  self.send_header('Content-Type', 'application/json')
+                  self.end_headers()
+                  self.wfile.write(json.dumps({'status': 'ok', 'model': 'resq-v3'}).encode())
+              else:
+                  self.send_response(404)
+                  self.end_headers()
+          def log_message(self, *a): pass
+
+      socketserver.TCPServer.allow_reuse_address = True
+      socketserver.TCPServer(('', 8000), H).serve_forever()
+      "
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  web-dashboard:
+    image: python:3.12-alpine
+    command: >
+      python3 -c "
+      import http.server, socketserver
+
+      class H(http.server.SimpleHTTPRequestHandler):
+          def do_GET(self):
+              self.send_response(200)
+              self.send_header('Content-Type', 'text/html')
+              self.end_headers()
+              self.wfile.write(b'<h1>ResQ Dashboard</h1><p>Demo placeholder</p>')
+          def log_message(self, *a): pass
+
+      socketserver.TCPServer.allow_reuse_address = True
+      socketserver.TCPServer(('', 3000), H).serve_forever()
+      "
+    ports:
+      - "3001:3000"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3

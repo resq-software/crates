@@ -1,0 +1,39 @@
+[2026-04-10 15:54:16] DEBUG Connection pool: 16/20 active, 12/20 idle
+[2026-04-10 15:54:16] ERROR Connection timeout after 5000ms to postgres:5432
+[2026-04-10 15:54:16] WARN Connection pool near capacity: 13/20 active
+[2026-04-10 15:54:16] INFO Query executed in 411ms: UPDATE users SET last_seen = NOW() WHERE id = $1
+[2026-04-10 15:54:16] INFO Query executed in 218ms: UPDATE users SET last_seen = NOW() WHERE id = $1
+[2026-04-10 15:54:16] INFO Query executed in 697ms: SELECT * FROM users WHERE id = $1
+[2026-04-10 15:54:16] WARN Connection pool near capacity: 13/20 active
+[2026-04-10 15:54:16] WARN Slow query detected (60ms): SELECT * FROM events WHERE created_at > $1
+[2026-04-10 15:54:16] INFO Vacuum completed on table 'events': 1659 dead tuples removed
+[2026-04-10 15:54:16] INFO Query executed in 690ms: SELECT * FROM users WHERE id = $1
+[2026-04-10 15:54:16] WARN Connection pool near capacity: 4/20 active
+[2026-04-10 15:54:16] WARN Slow query detected (171ms): SELECT * FROM events WHERE created_at > $1
+[2026-04-10 15:54:16] WARN Connection pool near capacity: 4/20 active
+[2026-04-10 15:54:16] ERROR Deadlock detected on table 'events', retrying transaction
+[2026-04-10 15:54:16] INFO Query executed in 76ms: INSERT INTO events (type, data) VALUES ($1, $2)
+[2026-04-10 15:54:16] INFO Query executed in 251ms: INSERT INTO events (type, data) VALUES ($1, $2)
+[2026-04-10 15:54:16] INFO Query executed in 138ms: INSERT INTO events (type, data) VALUES ($1, $2)
+[2026-04-10 15:54:16] WARN Connection pool near capacity: 11/20 active
+[2026-04-10 15:54:16] INFO Query executed in 367ms: SELECT * FROM users WHERE id = $1
+[2026-04-10 15:54:16] INFO Query executed in 313ms: UPDATE users SET last_seen = NOW() WHERE id = $1
+[2026-04-10 15:54:16] INFO Query executed in 268ms: INSERT INTO events (type, data) VALUES ($1, $2)
+[2026-04-10 15:54:16] WARN Slow query detected (261ms): SELECT * FROM events WHERE created_at > $1
+[2026-04-10 15:54:16] INFO Query executed in 680ms: UPDATE users SET last_seen = NOW() WHERE id = $1
+[2026-04-10 15:54:16] DEBUG Connection pool: 12/20 active, 14/20 idle
+[2026-04-10 15:54:16] ERROR Connection timeout after 5000ms to postgres:5432
+[2026-04-10 15:54:16] DEBUG Connection pool: 4/20 active, 9/20 idle
+[2026-04-10 15:54:16] WARN Connection pool near capacity: 4/20 active
+[2026-04-10 15:54:16] ERROR Deadlock detected on table 'events', retrying transaction
+[2026-04-10 15:54:16] INFO Query executed in 784ms: SELECT * FROM users WHERE id = $1
+[2026-04-10 15:54:16] ERROR Connection timeout after 5000ms to postgres:5432
+[2026-04-10 15:54:16] WARN Connection pool near capacity: 15/20 active
+[2026-04-10 15:54:16] INFO Vacuum completed on table 'events': 1474 dead tuples removed
+[2026-04-10 15:54:16] INFO Vacuum completed on table 'events': 3866 dead tuples removed
+[2026-04-10 15:54:16] INFO Vacuum completed on table 'events': 3945 dead tuples removed
+[2026-04-10 15:54:16] ERROR Connection timeout after 5000ms to postgres:5432
+[2026-04-10 15:54:16] ERROR Connection timeout after 5000ms to postgres:5432
+[2026-04-10 15:54:16] INFO Query executed in 704ms: INSERT INTO events (type, data) VALUES ($1, $2)
+[2026-04-10 15:54:16] INFO Query executed in 784ms: SELECT * FROM users WHERE id = $1
+[2026-04-10 15:54:16] DEBUG Connection pool: 16/20 active, 17/20 idle
