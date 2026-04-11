@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+use alloc::vec::Vec;
+
 /// A bounded max-heap that keeps the K entries with the smallest "distance"
 /// values.
 ///
@@ -127,7 +129,7 @@ impl<T, D: Fn(&T) -> f64> BoundedHeap<T, D> {
         refs.sort_by(|a, b| {
             (self.dist)(a)
                 .partial_cmp(&(self.dist)(b))
-                .unwrap_or(std::cmp::Ordering::Equal)
+                .unwrap_or(core::cmp::Ordering::Equal)
         });
         refs
     }
@@ -230,5 +232,44 @@ mod tests {
         h.insert(Item { id: 1, dist: 5.0 });
         h.insert(Item { id: 2, dist: 3.0 });
         assert_eq!(h.len(), 2);
+    }
+
+    #[test]
+    fn limit_zero_rejects_all() {
+        let mut h = BoundedHeap::new(0, |x: &Item| x.dist);
+        h.insert(Item { id: 1, dist: 1.0 });
+        assert!(h.is_empty());
+        assert!(h.peek().is_none());
+    }
+
+    #[test]
+    fn to_sorted_empty() {
+        let h: BoundedHeap<Item, _> = BoundedHeap::new(5, |x: &Item| x.dist);
+        assert!(h.to_sorted().is_empty());
+    }
+
+    #[test]
+    fn negative_distances() {
+        let mut h = BoundedHeap::new(2, |x: &Item| x.dist);
+        h.insert(Item { id: 1, dist: -10.0 });
+        h.insert(Item { id: 2, dist: -20.0 });
+        h.insert(Item { id: 3, dist: -5.0 });
+        // Keeps the 2 smallest distances: -20 and -10
+        assert_eq!(h.len(), 2);
+        let sorted: Vec<u32> = h.to_sorted().iter().map(|x| x.id).collect();
+        assert_eq!(sorted, vec![2, 1]);
+    }
+
+    #[test]
+    fn identical_distances() {
+        let mut h = BoundedHeap::new(3, |x: &Item| x.dist);
+        for i in 0..5 {
+            h.insert(Item { id: i, dist: 1.0 });
+        }
+        // All same distance — first 3 kept, rest rejected (not smaller than root).
+        assert_eq!(h.len(), 3);
+        let mut kept: Vec<u32> = h.to_sorted().iter().map(|x| x.id).collect();
+        kept.sort_unstable();
+        assert_eq!(kept, vec![0, 1, 2]);
     }
 }

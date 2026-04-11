@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+use alloc::vec;
+use alloc::vec::Vec;
+
 /// A space-efficient probabilistic set membership data structure.
 ///
 /// A Bloom filter can tell you if an element is *possibly* in the set
@@ -71,6 +74,7 @@ impl BloomFilter {
     /// // Create a filter for 10000 items with 1% false positive rate
     /// let bf = BloomFilter::new(10000, 0.01);
     /// ```
+    #[cfg(feature = "std")]
     #[must_use]
     pub fn new(capacity: usize, error_rate: f64) -> Self {
         assert!(
@@ -84,7 +88,7 @@ impl BloomFilter {
             clippy::cast_sign_loss
         )]
         let m = (-(capacity as f64) * error_rate.ln()
-            / (std::f64::consts::LN_2 * std::f64::consts::LN_2))
+            / (core::f64::consts::LN_2 * core::f64::consts::LN_2))
             .ceil() as usize;
         #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
         #[allow(
@@ -92,11 +96,32 @@ impl BloomFilter {
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss
         )]
-        let k = ((m as f64 / capacity as f64) * std::f64::consts::LN_2).round() as usize;
+        let k = ((m as f64 / capacity as f64) * core::f64::consts::LN_2).round() as usize;
+        Self::from_raw_params(m, k.max(1))
+    }
+
+    /// Creates a new Bloom filter from pre-computed parameters.
+    ///
+    /// Use this in `no_std` environments where you pre-compute `m` and `k`
+    /// externally. With `std`, prefer [`new`][Self::new] which computes
+    /// optimal values automatically.
+    ///
+    /// # Arguments
+    ///
+    /// * `bit_count` - Number of bits in the filter (`m`)
+    /// * `hash_count` - Number of hash functions (`k`)
+    ///
+    /// # Panics
+    ///
+    /// Panics if `bit_count` or `hash_count` is zero.
+    #[must_use]
+    pub fn from_raw_params(bit_count: usize, hash_count: usize) -> Self {
+        assert!(bit_count > 0, "bit_count must be > 0");
+        assert!(hash_count > 0, "hash_count must be > 0");
         Self {
-            bits: vec![0u8; m.div_ceil(8)],
-            k: k.max(1),
-            m,
+            bits: vec![0u8; bit_count.div_ceil(8)],
+            k: hash_count,
+            m: bit_count,
             count: 0,
         }
     }
@@ -125,7 +150,7 @@ impl BloomFilter {
             let idx = Self::hash(bytes, (i as u32).wrapping_mul(0x9e37_79b9), self.m);
             self.bits[idx >> 3] |= 1 << (idx & 7);
         }
-        self.count += 1;
+        self.count = self.count.saturating_add(1);
     }
 
     /// Checks if an element might be in the set.
@@ -173,7 +198,7 @@ impl BloomFilter {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
 
@@ -212,5 +237,53 @@ mod tests {
         bf.clear();
         assert!(bf.is_empty());
         assert!(!bf.has("a"));
+    }
+
+    #[test]
+    #[should_panic(expected = "capacity must be > 0")]
+    fn panics_on_zero_capacity() {
+        let _ = BloomFilter::new(0, 0.01);
+    }
+
+    #[test]
+    #[should_panic(expected = "error_rate must be in (0,1)")]
+    fn panics_on_zero_error_rate() {
+        let _ = BloomFilter::new(100, 0.0);
+    }
+
+    #[test]
+    #[should_panic(expected = "error_rate must be in (0,1)")]
+    fn panics_on_one_error_rate() {
+        let _ = BloomFilter::new(100, 1.0);
+    }
+
+    #[test]
+    fn from_raw_params_works() {
+        let mut bf = BloomFilter::from_raw_params(1024, 7);
+        bf.add("hello");
+        assert!(bf.has("hello"));
+        assert!(!bf.has("world"));
+    }
+
+    #[test]
+    fn capacity_one() {
+        let mut bf = BloomFilter::new(1, 0.01);
+        bf.add("only");
+        assert!(bf.has("only"));
+    }
+
+    #[test]
+    fn high_error_rate() {
+        // With a very high error rate, the filter is tiny but should still work.
+        let mut bf = BloomFilter::new(100, 0.99);
+        bf.add("x");
+        assert!(bf.has("x"));
+    }
+
+    #[test]
+    fn empty_key() {
+        let mut bf = BloomFilter::new(100, 0.01);
+        bf.add("");
+        assert!(bf.has(""));
     }
 }

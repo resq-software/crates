@@ -59,8 +59,16 @@ pub mod bloom;
 /// Count-Min sketch for frequency estimation.
 pub mod count_min;
 /// Graph data structure and pathfinding algorithms.
+///
+/// Requires the `std` feature (enabled by default) because it depends on
+/// `std::collections::{HashMap, HashSet, BinaryHeap, VecDeque}`.
+#[cfg(feature = "std")]
 pub mod graph;
 /// Bounded heap for K-nearest neighbor tracking.
 pub mod heap;
 /// Trie prefix tree and Rabin-Karp pattern matching.
+///
+/// Requires the `std` feature (enabled by default) because it depends on
+/// `std::collections::HashMap`.
+#[cfg(feature = "std")]
 pub mod trie;

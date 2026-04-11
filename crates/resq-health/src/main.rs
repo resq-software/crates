@@ -169,23 +169,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (event_tx, mut event_rx) = mpsc::channel(32);
     let (reg_tx, mut reg_rx) = mpsc::channel(1);
 
-    // Event Loop task
+    // Event Loop task — polls terminal events and forwards to the main loop.
     let etx = event_tx.clone();
     tokio::spawn(async move {
         loop {
-            if event::poll(Duration::from_millis(50)).unwrap() {
-                if let Event::Key(key) = event::read().unwrap() {
-                    let _ = etx.send(AppEvent::Key(key)).await;
+            match event::poll(Duration::from_millis(50)) {
+                Ok(true) => {
+                    if let Ok(Event::Key(key)) = event::read() {
+                        let _ = etx.send(AppEvent::Key(key)).await;
+                    }
                 }
+                Ok(false) => {}
+                Err(_) => break, // Terminal disconnected
             }
             let _ = etx.send(AppEvent::Tick).await;
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
     });
 
-    // Background Updater task
+    // Background Updater task — polls service health endpoints.
     tokio::spawn(async move {
-        let mut registry = ServiceRegistry::new().unwrap();
+        let mut registry = match ServiceRegistry::new() {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("Failed to initialize service registry: {e}");
+                return;
+            }
+        };
         loop {
             registry.check_all().await;
             let _ = reg_tx.send(registry.services().to_vec()).await;

@@ -274,4 +274,75 @@ mod tests {
         assert_eq!(entry.service, "default-svc");
         assert_eq!(entry.level, LogLevel::Error);
     }
+
+    #[test]
+    fn test_rust_log_format() {
+        let line = "2026-01-15T10:30:00Z INFO resq_worker::queue: Processing job #1234";
+        let entry = parse_line(line, "fallback");
+        assert_eq!(entry.level, LogLevel::Info);
+        assert_eq!(entry.service, "resq_worker::queue");
+        assert_eq!(entry.message, "Processing job #1234");
+        assert!(entry.timestamp.is_some());
+    }
+
+    #[test]
+    fn test_json_with_aliases() {
+        // Uses "lvl" and "msg" aliases instead of "level" and "message"
+        let line = r#"{"lvl":"warn","msg":"disk almost full","service":"db"}"#;
+        let entry = parse_line(line, "test");
+        assert_eq!(entry.level, LogLevel::Warn);
+        assert_eq!(entry.message, "disk almost full");
+        assert_eq!(entry.service, "db");
+    }
+
+    #[test]
+    fn test_json_with_severity_alias() {
+        let line = r#"{"severity":"debug","message":"query plan","component":"postgres"}"#;
+        let entry = parse_line(line, "test");
+        assert_eq!(entry.level, LogLevel::Debug);
+        assert_eq!(entry.service, "postgres");
+    }
+
+    #[test]
+    fn test_empty_line() {
+        let entry = parse_line("", "svc");
+        assert_eq!(entry.service, "svc");
+        assert_eq!(entry.level, LogLevel::Info);
+    }
+
+    #[test]
+    fn test_malformed_json() {
+        // Starts with { but isn't valid JSON — should fall through to plain text
+        let line = r"{ broken json";
+        let entry = parse_line(line, "svc");
+        assert_eq!(entry.service, "svc");
+        assert_eq!(entry.level, LogLevel::Info);
+    }
+
+    #[test]
+    fn test_docker_prefix_with_json_body() {
+        let line =
+            r#"resq-api  | {"level":"error","msg":"timeout","timestamp":"2026-03-01T00:00:00Z"}"#;
+        let entry = parse_line(line, "unknown");
+        assert_eq!(entry.service, "api");
+        assert_eq!(entry.level, LogLevel::Error);
+        assert_eq!(entry.message, "timeout");
+    }
+
+    #[test]
+    fn test_guess_level_keywords() {
+        assert_eq!(guess_level("FATAL: system crash"), LogLevel::Error);
+        assert_eq!(guess_level("PANIC at the disco"), LogLevel::Error);
+        assert_eq!(guess_level("WARNING: low memory"), LogLevel::Warn);
+        assert_eq!(guess_level("DEBUG: variable x=5"), LogLevel::Debug);
+        assert_eq!(guess_level("TRACE entering fn"), LogLevel::Trace);
+        assert_eq!(guess_level("normal message"), LogLevel::Info);
+    }
+
+    #[test]
+    fn test_level_parsing_case_insensitive() {
+        let line = r#"{"level":"ERROR","msg":"fail"}"#;
+        let entry = parse_line(line, "test");
+        assert_eq!(entry.level, LogLevel::Error);
+    }
 }
