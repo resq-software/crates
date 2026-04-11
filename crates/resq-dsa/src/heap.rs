@@ -251,18 +251,9 @@ mod tests {
     #[test]
     fn negative_distances() {
         let mut h = BoundedHeap::new(2, |x: &Item| x.dist);
-        h.insert(Item {
-            id: 1,
-            dist: -10.0,
-        });
-        h.insert(Item {
-            id: 2,
-            dist: -20.0,
-        });
-        h.insert(Item {
-            id: 3,
-            dist: -5.0,
-        });
+        h.insert(Item { id: 1, dist: -10.0 });
+        h.insert(Item { id: 2, dist: -20.0 });
+        h.insert(Item { id: 3, dist: -5.0 });
         // Keeps the 2 smallest distances: -20 and -10
         assert_eq!(h.len(), 2);
         let sorted: Vec<u32> = h.to_sorted().iter().map(|x| x.id).collect();
@@ -273,12 +264,12 @@ mod tests {
     fn identical_distances() {
         let mut h = BoundedHeap::new(3, |x: &Item| x.dist);
         for i in 0..5 {
-            h.insert(Item {
-                id: i,
-                dist: 1.0,
-            });
+            h.insert(Item { id: i, dist: 1.0 });
         }
         // All same distance — first 3 kept, rest rejected (not smaller than root).
         assert_eq!(h.len(), 3);
+        let mut kept: Vec<u32> = h.to_sorted().iter().map(|x| x.id).collect();
+        kept.sort_unstable();
+        assert_eq!(kept, vec![0, 1, 2]);
     }
 }

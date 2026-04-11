@@ -3,3 +3,5 @@
 426fa001f6dd6f7589b0f3f94c1b43d5807daf82:cli/src/commands/secrets.rs:private-key:351
 426fa001f6dd6f7589b0f3f94c1b43d5807daf82:cli/src/commands/secrets.rs:generic-api-key:1170
 426fa001f6dd6f7589b0f3f94c1b43d5807daf82:cli/src/commands/secrets.rs:github-pat:1194
+18ce8ccb0943e9ddc80bfedd7ab765fe93c9182b:crates/resq-perf/README.md:generic-api-key:93
+5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3:crates/resq-perf/README.md:generic-api-key:93

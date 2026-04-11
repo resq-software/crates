@@ -179,10 +179,8 @@ fn spawn_poller(
 
     std::thread::spawn(move || {
         loop {
-            let rate = Duration::from_millis(rate_ms.load(Ordering::Relaxed));
-            std::thread::sleep(rate);
-
             if paused.load(Ordering::Relaxed) {
+                std::thread::sleep(Duration::from_millis(100));
                 continue;
             }
 
@@ -219,6 +217,10 @@ fn spawn_poller(
             if tx.send(result).is_err() {
                 break;
             }
+
+            // Sleep after the fetch so the first request fires immediately.
+            let rate = Duration::from_millis(rate_ms.load(Ordering::Relaxed));
+            std::thread::sleep(rate);
         }
     });
 
@@ -258,10 +260,7 @@ impl App {
     fn drain_updates(&mut self) {
         while let Ok(result) = self.rx.try_recv() {
             match result {
-                FetchResult::Ok {
-                    status,
-                    latency_ms,
-                } => {
+                FetchResult::Ok { status, latency_ms } => {
                     self.last_latency = Some(latency_ms);
                     self.latency_history.push_back(latency_ms);
                     if self.latency_history.len() > MAX_HISTORY {
@@ -288,6 +287,7 @@ impl App {
                         }
                     }
                     self.record_error(message);
+                    self.status = None;
                 }
             }
         }
