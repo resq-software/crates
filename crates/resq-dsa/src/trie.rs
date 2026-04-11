@@ -280,4 +280,67 @@ mod tests {
     fn rabin_karp_no_match() {
         assert!(rabin_karp("hello", "xyz").is_empty());
     }
+
+    #[test]
+    fn empty_string_insert_and_search() {
+        let mut t = Trie::new();
+        t.insert("");
+        assert!(t.search(""));
+        assert!(!t.search("a"));
+    }
+
+    #[test]
+    fn search_not_inserted() {
+        let t = Trie::new();
+        assert!(!t.search("anything"));
+    }
+
+    #[test]
+    fn starts_with_empty_prefix() {
+        let mut t = Trie::new();
+        t.insert("alpha");
+        t.insert("beta");
+        let mut r = t.starts_with("");
+        r.sort();
+        assert_eq!(r, vec!["alpha", "beta"]);
+    }
+
+    #[test]
+    fn starts_with_no_matches() {
+        let mut t = Trie::new();
+        t.insert("hello");
+        assert!(t.starts_with("xyz").is_empty());
+    }
+
+    #[test]
+    fn unicode_support() {
+        let mut t = Trie::new();
+        t.insert("café");
+        t.insert("naïve");
+        assert!(t.search("café"));
+        assert!(!t.search("cafe"));
+        let r = t.starts_with("caf");
+        assert_eq!(r, vec!["café"]);
+    }
+
+    #[test]
+    fn rabin_karp_empty_pattern() {
+        // Empty pattern should return empty results.
+        assert!(rabin_karp("hello", "").is_empty());
+    }
+
+    #[test]
+    fn rabin_karp_unicode() {
+        assert_eq!(rabin_karp("aéaéa", "aé"), vec![0, 2]);
+    }
+
+    #[test]
+    fn rabin_karp_pattern_longer_than_text() {
+        assert!(rabin_karp("hi", "longer pattern").is_empty());
+    }
+
+    #[test]
+    fn rabin_karp_full_match() {
+        assert_eq!(rabin_karp("exact", "exact"), vec![0]);
+    }
 }

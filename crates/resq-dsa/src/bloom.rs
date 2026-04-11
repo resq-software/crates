@@ -238,4 +238,52 @@ mod tests {
         assert!(bf.is_empty());
         assert!(!bf.has("a"));
     }
+
+    #[test]
+    #[should_panic(expected = "capacity must be > 0")]
+    fn panics_on_zero_capacity() {
+        let _ = BloomFilter::new(0, 0.01);
+    }
+
+    #[test]
+    #[should_panic(expected = "error_rate must be in (0,1)")]
+    fn panics_on_zero_error_rate() {
+        let _ = BloomFilter::new(100, 0.0);
+    }
+
+    #[test]
+    #[should_panic(expected = "error_rate must be in (0,1)")]
+    fn panics_on_one_error_rate() {
+        let _ = BloomFilter::new(100, 1.0);
+    }
+
+    #[test]
+    fn from_raw_params_works() {
+        let mut bf = BloomFilter::from_raw_params(1024, 7);
+        bf.add("hello");
+        assert!(bf.has("hello"));
+        assert!(!bf.has("world"));
+    }
+
+    #[test]
+    fn capacity_one() {
+        let mut bf = BloomFilter::new(1, 0.01);
+        bf.add("only");
+        assert!(bf.has("only"));
+    }
+
+    #[test]
+    fn high_error_rate() {
+        // With a very high error rate, the filter is tiny but should still work.
+        let mut bf = BloomFilter::new(100, 0.99);
+        bf.add("x");
+        assert!(bf.has("x"));
+    }
+
+    #[test]
+    fn empty_key() {
+        let mut bf = BloomFilter::new(100, 0.01);
+        bf.add("");
+        assert!(bf.has(""));
+    }
 }

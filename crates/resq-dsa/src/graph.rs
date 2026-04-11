@@ -286,4 +286,75 @@ mod tests {
         assert_eq!(path, vec![0, 1, 2]);
         assert_eq!(cost, 2);
     }
+
+    #[test]
+    fn empty_graph_bfs() {
+        let g = Graph::<&str>::new();
+        // BFS from a node not in the graph returns just that node.
+        let result = g.bfs(&"A");
+        assert_eq!(result, vec!["A"]);
+    }
+
+    #[test]
+    fn empty_graph_dijkstra() {
+        let g = Graph::<&str>::new();
+        assert!(g.dijkstra(&"A", &"B").is_none());
+    }
+
+    #[test]
+    fn single_node_self_loop() {
+        let mut g = Graph::<&str>::new();
+        g.add_edge("A", "A", 5);
+        let result = g.bfs(&"A");
+        assert_eq!(result, vec!["A"]);
+    }
+
+    #[test]
+    fn dijkstra_same_start_end() {
+        let mut g = Graph::<&str>::new();
+        g.add_edge("A", "B", 1);
+        let (path, cost) = g.dijkstra(&"A", &"A").expect("Self path should exist");
+        assert_eq!(path, vec!["A"]);
+        assert_eq!(cost, 0);
+    }
+
+    #[test]
+    fn cycle_graph() {
+        let mut g = Graph::<&str>::new();
+        g.add_edge("A", "B", 1);
+        g.add_edge("B", "C", 1);
+        g.add_edge("C", "A", 1);
+        let visited = g.bfs(&"A");
+        assert_eq!(visited.len(), 3);
+    }
+
+    #[test]
+    fn disconnected_components() {
+        let mut g = Graph::<&str>::new();
+        g.add_edge("A", "B", 1);
+        g.add_edge("C", "D", 1);
+        let visited = g.bfs(&"A");
+        assert_eq!(visited, vec!["A", "B"]);
+        assert!(g.dijkstra(&"A", &"C").is_none());
+    }
+
+    #[test]
+    fn zero_weight_edge() {
+        let mut g = Graph::<&str>::new();
+        g.add_edge("A", "B", 0);
+        g.add_edge("B", "C", 0);
+        let (path, cost) = g.dijkstra(&"A", &"C").expect("Path should exist");
+        assert_eq!(path, vec!["A", "B", "C"]);
+        assert_eq!(cost, 0);
+    }
+
+    #[test]
+    fn parallel_edges_picks_cheapest() {
+        let mut g = Graph::<&str>::new();
+        g.add_edge("A", "B", 10);
+        g.add_edge("A", "B", 1); // cheaper duplicate
+        g.add_edge("B", "C", 1);
+        let (_, cost) = g.dijkstra(&"A", &"C").expect("Path should exist");
+        assert_eq!(cost, 2); // takes the cheaper A->B edge
+    }
 }

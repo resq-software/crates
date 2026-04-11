@@ -1128,4 +1128,85 @@ mod tests {
         let app = App::new("http://localhost:3000".into(), None, 500).unwrap();
         assert_eq!(app.refresh_rate_ms, 500);
     }
+
+    #[test]
+    fn parse_full_status_response() {
+        let json = r#"{
+            "uptime": "1d 2h 30m 15s",
+            "uptimeNanoseconds": 95415000000000,
+            "memory": {
+                "process": {
+                    "rss": 245694464,
+                    "heapUsed": 67108864,
+                    "heapTotal": 134217728,
+                    "external": 8388608,
+                    "arrayBuffers": 1024
+                },
+                "heap": {
+                    "heapSize": 67108864,
+                    "heapCapacity": 134217728,
+                    "extraMemorySize": 0,
+                    "objectCount": 12345,
+                    "protectedObjectCount": 100,
+                    "globalObjectCount": 50,
+                    "protectedGlobalObjectCount": 5,
+                    "objectTypeCounts": { "Object": 5000, "Array": 3000 }
+                }
+            },
+            "version": "2.1.0",
+            "environment": "production"
+        }"#;
+        let status: StatusResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(status.uptime, "1d 2h 30m 15s");
+        assert_eq!(status.uptime_nanoseconds, 95_415_000_000_000);
+        assert_eq!(status.memory.process.rss, 245_694_464);
+        assert_eq!(status.memory.process.heap_used, 67_108_864);
+        assert_eq!(status.memory.heap.object_count, 12345);
+        assert_eq!(status.version, "2.1.0");
+        assert_eq!(status.environment, "production");
+    }
+
+    #[test]
+    fn parse_minimal_status_response() {
+        // Missing optional fields should use defaults
+        let json = r#"{
+            "uptime": "0s",
+            "memory": {
+                "process": { "rss": 0, "heapUsed": 0, "heapTotal": 0, "external": 0 },
+                "heap": {
+                    "heapSize": 0, "heapCapacity": 0, "extraMemorySize": 0,
+                    "objectCount": 0, "protectedObjectCount": 0,
+                    "globalObjectCount": 0, "protectedGlobalObjectCount": 0
+                }
+            },
+            "version": "0.0.0",
+            "environment": "test"
+        }"#;
+        let status: StatusResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(status.uptime_nanoseconds, 0); // default
+        assert_eq!(status.memory.process.array_buffers, 0); // default
+    }
+
+    #[test]
+    fn parse_status_with_extra_fields() {
+        // Unknown fields should be silently ignored
+        let json = r#"{
+            "uptime": "1s",
+            "uptimeNanoseconds": 1000000000,
+            "memory": {
+                "process": { "rss": 100, "heapUsed": 50, "heapTotal": 200, "external": 10 },
+                "heap": {
+                    "heapSize": 50, "heapCapacity": 200, "extraMemorySize": 0,
+                    "objectCount": 1, "protectedObjectCount": 0,
+                    "globalObjectCount": 0, "protectedGlobalObjectCount": 0
+                }
+            },
+            "version": "1.0.0",
+            "environment": "dev",
+            "unknownField": "should be ignored",
+            "anotherExtra": 42
+        }"#;
+        let status: StatusResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(status.version, "1.0.0");
+    }
 }
