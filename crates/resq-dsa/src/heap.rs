@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+use alloc::vec::Vec;
+
 /// A bounded max-heap that keeps the K entries with the smallest "distance"
 /// values.
 ///
@@ -127,7 +129,7 @@ impl<T, D: Fn(&T) -> f64> BoundedHeap<T, D> {
         refs.sort_by(|a, b| {
             (self.dist)(a)
                 .partial_cmp(&(self.dist)(b))
-                .unwrap_or(std::cmp::Ordering::Equal)
+                .unwrap_or(core::cmp::Ordering::Equal)
         });
         refs
     }

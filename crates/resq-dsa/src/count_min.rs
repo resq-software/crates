@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+use alloc::vec;
+use alloc::vec::Vec;
+
 /// A space-efficient probabilistic data structure for frequency estimation.
 ///
 /// The Count-Min sketch can estimate the frequency of events with guaranteed
@@ -77,6 +80,11 @@ impl CountMinSketch {
     /// // with 99% probability
     /// let cms = CountMinSketch::new(0.01, 0.01);
     /// ```
+    /// Creates a new Count-Min sketch with the given error bounds.
+    ///
+    /// Requires the `std` feature for floating-point math. In `no_std`
+    /// environments, use [`from_raw_params`][Self::from_raw_params].
+    #[cfg(feature = "std")]
     #[must_use]
     pub fn new(epsilon: f64, delta: f64) -> Self {
         assert!(epsilon > 0.0 && epsilon < 1.0, "epsilon must be in (0,1)");
@@ -86,13 +94,33 @@ impl CountMinSketch {
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss
         )]
-        let width = (std::f64::consts::E / epsilon).ceil() as usize;
+        let width = (core::f64::consts::E / epsilon).ceil() as usize;
         #[allow(
             clippy::cast_precision_loss,
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss
         )]
         let depth = (1.0_f64 / delta).ln().ceil() as usize;
+        Self::from_raw_params(width, depth)
+    }
+
+    /// Creates a new Count-Min sketch from pre-computed dimensions.
+    ///
+    /// Use this in `no_std` environments where you pre-compute `width`
+    /// and `depth` externally. With `std`, prefer [`new`][Self::new].
+    ///
+    /// # Arguments
+    ///
+    /// * `width` - Number of columns (derived from epsilon: `ceil(e / epsilon)`)
+    /// * `depth` - Number of rows / hash functions (derived from delta: `ceil(ln(1 / delta))`)
+    ///
+    /// # Panics
+    ///
+    /// Panics if `width` or `depth` is zero.
+    #[must_use]
+    pub fn from_raw_params(width: usize, depth: usize) -> Self {
+        assert!(width > 0, "width must be > 0");
+        assert!(depth > 0, "depth must be > 0");
         Self {
             table: vec![vec![0u64; width]; depth],
             width,

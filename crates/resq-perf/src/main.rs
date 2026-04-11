@@ -37,6 +37,10 @@
 
 use std::{
     collections::{HashMap, VecDeque},
+    sync::{
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        mpsc, Arc,
+    },
     time::{Duration, Instant},
 };
 
@@ -123,93 +127,170 @@ struct ErrorEntry {
     message: String,
 }
 
+/// Result of a background fetch operation, sent through a channel.
+enum FetchResult {
+    /// Successful fetch with parsed status and round-trip latency.
+    Ok {
+        status: StatusResponse,
+        latency_ms: u64,
+    },
+    /// Fetch failed with an error message and optional latency.
+    Err {
+        message: String,
+        latency_ms: Option<u64>,
+    },
+}
+
 struct App {
+    /// URL being monitored (display only).
     url: String,
-    token: Option<String>,
     status: Option<StatusResponse>,
     memory_history: VecDeque<u64>,
     latency_history: VecDeque<u64>,
     error_history: VecDeque<ErrorEntry>,
-    last_fetch: Instant,
     current_error: Option<String>,
-    client: reqwest::blocking::Client,
     paused: bool,
     refresh_rate_ms: u64,
     show_help: bool,
     last_latency: Option<u64>,
     success_count: u64,
     error_count: u64,
+    /// Receives results from the background polling thread.
+    rx: mpsc::Receiver<FetchResult>,
+    /// Shared flag to signal the background thread to pause.
+    poll_paused: Arc<AtomicBool>,
+    /// Shared refresh rate (milliseconds) read by the background thread.
+    poll_rate_ms: Arc<AtomicU64>,
+}
+
+/// Spawns a background thread that polls the status endpoint and sends
+/// results through a channel. The TUI thread never blocks on network I/O.
+fn spawn_poller(
+    url: String,
+    token: Option<String>,
+    paused: Arc<AtomicBool>,
+    rate_ms: Arc<AtomicU64>,
+) -> Result<mpsc::Receiver<FetchResult>> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()
+        .context("failed to create HTTP client")?;
+    let (tx, rx) = mpsc::channel();
+
+    std::thread::spawn(move || {
+        loop {
+            let rate = Duration::from_millis(rate_ms.load(Ordering::Relaxed));
+            std::thread::sleep(rate);
+
+            if paused.load(Ordering::Relaxed) {
+                continue;
+            }
+
+            let start = Instant::now();
+            let mut req = client.get(&url);
+            if let Some(ref t) = &token {
+                req = req.header("authorization", format!("Bearer {t}"));
+            }
+            let result = match req.send() {
+                Ok(resp) => {
+                    let latency_ms = start.elapsed().as_millis() as u64;
+                    if resp.status().is_success() {
+                        match resp.json::<StatusResponse>() {
+                            Ok(status) => FetchResult::Ok { status, latency_ms },
+                            Err(e) => FetchResult::Err {
+                                message: format!("Parse error: {e}"),
+                                latency_ms: Some(latency_ms),
+                            },
+                        }
+                    } else {
+                        FetchResult::Err {
+                            message: format!("HTTP {}", resp.status()),
+                            latency_ms: Some(latency_ms),
+                        }
+                    }
+                }
+                Err(e) => FetchResult::Err {
+                    message: format!("Connection error: {e}"),
+                    latency_ms: None,
+                },
+            };
+
+            // If the TUI has exited, the receiver is dropped and send fails.
+            if tx.send(result).is_err() {
+                break;
+            }
+        }
+    });
+
+    Ok(rx)
 }
 
 impl App {
     fn new(url: String, token: Option<String>, refresh_rate_ms: u64) -> Result<Self> {
+        let poll_paused = Arc::new(AtomicBool::new(false));
+        let poll_rate_ms = Arc::new(AtomicU64::new(refresh_rate_ms));
+        let rx = spawn_poller(
+            url.clone(),
+            token,
+            Arc::clone(&poll_paused),
+            Arc::clone(&poll_rate_ms),
+        )?;
         Ok(Self {
             url,
-            token,
             status: None,
             memory_history: VecDeque::with_capacity(MAX_HISTORY),
             latency_history: VecDeque::with_capacity(MAX_HISTORY),
             error_history: VecDeque::new(),
-            last_fetch: Instant::now(),
             current_error: None,
-            client: reqwest::blocking::Client::builder()
-                .timeout(Duration::from_secs(5))
-                .build()
-                .context("failed to create HTTP client")?,
             paused: false,
             refresh_rate_ms,
             show_help: false,
             last_latency: None,
             success_count: 0,
             error_count: 0,
+            rx,
+            poll_paused,
+            poll_rate_ms,
         })
     }
 
-    fn update(&mut self) {
-        if self.paused {
-            return;
-        }
-
-        let start = Instant::now();
-        let mut req = self.client.get(&self.url);
-        if let Some(ref t) = self.token {
-            req = req.header("authorization", format!("Bearer {t}"));
-        }
-        match req.send() {
-            Ok(resp) => {
-                let latency = start.elapsed().as_millis() as u64;
-                self.last_latency = Some(latency);
-                self.latency_history.push_back(latency);
-                if self.latency_history.len() > MAX_HISTORY {
-                    self.latency_history.pop_front();
+    /// Drains all pending results from the background poller (non-blocking).
+    fn drain_updates(&mut self) {
+        while let Ok(result) = self.rx.try_recv() {
+            match result {
+                FetchResult::Ok {
+                    status,
+                    latency_ms,
+                } => {
+                    self.last_latency = Some(latency_ms);
+                    self.latency_history.push_back(latency_ms);
+                    if self.latency_history.len() > MAX_HISTORY {
+                        self.latency_history.pop_front();
+                    }
+                    self.memory_history
+                        .push_back(status.memory.process.heap_used);
+                    if self.memory_history.len() > MAX_HISTORY {
+                        self.memory_history.pop_front();
+                    }
+                    self.status = Some(status);
+                    self.current_error = None;
+                    self.success_count += 1;
                 }
-
-                if resp.status().is_success() {
-                    match resp.json::<StatusResponse>() {
-                        Ok(status) => {
-                            // Update memory history
-                            self.memory_history
-                                .push_back(status.memory.process.heap_used);
-                            if self.memory_history.len() > MAX_HISTORY {
-                                self.memory_history.pop_front();
-                            }
-                            self.status = Some(status);
-                            self.current_error = None;
-                            self.success_count += 1;
-                        }
-                        Err(e) => {
-                            self.record_error(format!("Parse error: {e}"));
+                FetchResult::Err {
+                    message,
+                    latency_ms,
+                } => {
+                    if let Some(lat) = latency_ms {
+                        self.last_latency = Some(lat);
+                        self.latency_history.push_back(lat);
+                        if self.latency_history.len() > MAX_HISTORY {
+                            self.latency_history.pop_front();
                         }
                     }
-                } else {
-                    self.record_error(format!("HTTP {}", resp.status()));
+                    self.record_error(message);
                 }
             }
-            Err(e) => {
-                self.record_error(format!("Connection error: {e}"));
-            }
         }
-        self.last_fetch = Instant::now();
     }
 
     fn record_error(&mut self, message: String) {
@@ -235,26 +316,27 @@ impl App {
 
     fn toggle_pause(&mut self) {
         self.paused = !self.paused;
+        self.poll_paused.store(self.paused, Ordering::Relaxed);
     }
 
     fn increase_refresh_rate(&mut self) {
         if self.refresh_rate_ms > MIN_REFRESH_MS {
             self.refresh_rate_ms = (self.refresh_rate_ms - 100).max(MIN_REFRESH_MS);
+            self.poll_rate_ms
+                .store(self.refresh_rate_ms, Ordering::Relaxed);
         }
     }
 
     fn decrease_refresh_rate(&mut self) {
         if self.refresh_rate_ms < MAX_REFRESH_MS {
             self.refresh_rate_ms = (self.refresh_rate_ms + 100).min(MAX_REFRESH_MS);
+            self.poll_rate_ms
+                .store(self.refresh_rate_ms, Ordering::Relaxed);
         }
     }
 
     fn toggle_help(&mut self) {
         self.show_help = !self.show_help;
-    }
-
-    fn tick_rate(&self) -> Duration {
-        Duration::from_millis(self.refresh_rate_ms)
     }
 
     fn uptime_seconds(&self) -> u64 {
@@ -858,17 +940,13 @@ fn main() -> Result<()> {
     let mut terminal = terminal::init()?;
     let mut app = App::new(args.url, args.token, refresh_ms)?;
 
-    // Initial fetch before entering the loop
-    app.update();
-
-    // Manual event loop: keeps blocking I/O (`update`) out of the draw call.
+    // Event loop: network polling runs on a background thread.
+    // The main thread only handles rendering and keyboard input.
     let poll_timeout = Duration::from_millis(50);
     let result: Result<()> = (|| {
         loop {
-            // 1. Tick-based network poll — only when the refresh interval has elapsed.
-            if app.last_fetch.elapsed() >= app.tick_rate() {
-                app.update();
-            }
+            // 1. Drain any results from the background poller (non-blocking).
+            app.drain_updates();
 
             // 2. Render the current state (pure, no I/O).
             terminal.draw(|f| draw(f, &app))?;
@@ -1046,8 +1124,8 @@ mod tests {
     }
 
     #[test]
-    fn app_tick_rate() {
+    fn app_refresh_rate() {
         let app = App::new("http://localhost:3000".into(), None, 500).unwrap();
-        assert_eq!(app.tick_rate(), Duration::from_millis(500));
+        assert_eq!(app.refresh_rate_ms, 500);
     }
 }
