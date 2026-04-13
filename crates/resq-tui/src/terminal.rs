@@ -70,7 +70,7 @@ impl Drop for TerminalGuard {
 pub fn init() -> anyhow::Result<TerminalGuard> {
     enable_raw_mode()?;
     if let Err(e) = execute!(io::stdout(), EnterAlternateScreen) {
-        let _ = disable_raw_mode();
+        restore();
         return Err(e.into());
     }
     match Terminal::new(CrosstermBackend::new(io::stdout())) {
