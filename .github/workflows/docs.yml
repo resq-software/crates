@@ -47,7 +47,7 @@ jobs:
         run: echo '<meta http-equiv="refresh" content="0;url=resq_dsa/index.html">' > target/doc/index.html
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: target/doc
 
