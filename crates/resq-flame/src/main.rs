@@ -166,10 +166,9 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let mut app = App::new(cli.output.clone());
-    let mut term = terminal::init()?;
-    let result = terminal::run_loop(&mut term, 100, &mut app);
-    terminal::restore();
-    result?;
+    let mut guard = terminal::init()?;
+    terminal::run_loop(&mut guard, 100, &mut app)?;
+    drop(guard);
 
     if let Some(idx) = app.selected_target {
         let target = &app.services[idx];

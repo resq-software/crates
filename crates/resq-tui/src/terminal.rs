@@ -17,6 +17,7 @@
 //! Terminal lifecycle helpers — init, restore, and event-loop runner.
 
 use std::io;
+use std::ops::{Deref, DerefMut};
 use std::time::Duration;
 
 use crossterm::{
@@ -29,17 +30,56 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 /// A `ratatui` terminal backed by Crossterm.
 pub type Term = Terminal<CrosstermBackend<io::Stdout>>;
 
+/// RAII guard that owns a [`Term`] and automatically calls [`restore`] on drop.
+///
+/// This ensures the terminal is cleaned up even on panic or early `?` returns.
+/// Use [`Deref`] / [`DerefMut`] to access the underlying [`Term`] transparently
+/// (e.g. `guard.draw(|f| ...)` works).
+#[must_use = "dropping the guard immediately restores the terminal — assign it to a variable"]
+pub struct TerminalGuard {
+    terminal: Term,
+}
+
+impl Deref for TerminalGuard {
+    type Target = Term;
+
+    fn deref(&self) -> &Self::Target {
+        &self.terminal
+    }
+}
+
+impl DerefMut for TerminalGuard {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.terminal
+    }
+}
+
+impl Drop for TerminalGuard {
+    fn drop(&mut self) {
+        restore();
+    }
+}
+
 /// Initialise raw mode and enter the alternate screen.
 ///
-/// Returns a ready-to-use [`Term`]. Call [`restore`] when finished.
+/// Returns a [`TerminalGuard`] that will call [`restore`] automatically when
+/// dropped, ensuring cleanup even on panic or early `?` returns.
 ///
 /// # Errors
 /// Propagates any I/O error from Crossterm or Ratatui.
-pub fn init() -> anyhow::Result<Term> {
+pub fn init() -> anyhow::Result<TerminalGuard> {
     enable_raw_mode()?;
-    execute!(io::stdout(), EnterAlternateScreen)?;
-    let terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
-    Ok(terminal)
+    if let Err(e) = execute!(io::stdout(), EnterAlternateScreen) {
+        restore();
+        return Err(e.into());
+    }
+    match Terminal::new(CrosstermBackend::new(io::stdout())) {
+        Ok(terminal) => Ok(TerminalGuard { terminal }),
+        Err(e) => {
+            restore();
+            Err(e.into())
+        }
+    }
 }
 
 /// Leave the alternate screen and disable raw mode.

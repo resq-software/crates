@@ -263,10 +263,8 @@ async fn main() -> anyhow::Result<()> {
     let mut app = App::new(args.env, args.k8s, project_root);
     app.refresh_status();
 
-    let mut term = terminal::init()?;
-    let result = terminal::run_loop(&mut term, 50, &mut app);
-    terminal::restore();
-    result
+    let mut guard = terminal::init()?;
+    terminal::run_loop(&mut guard, 50, &mut app)
 }
 
 fn draw_ui(f: &mut Frame, app: &mut App) {

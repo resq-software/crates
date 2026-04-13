@@ -937,7 +937,7 @@ fn main() -> Result<()> {
     let args = CliArgs::parse();
     let refresh_ms = args.refresh_ms.clamp(MIN_REFRESH_MS, MAX_REFRESH_MS);
 
-    let mut terminal = terminal::init()?;
+    let mut guard = terminal::init()?;
     let mut app = App::new(args.url, args.token, refresh_ms)?;
 
     // Event loop: network polling runs on a background thread.
@@ -949,7 +949,7 @@ fn main() -> Result<()> {
             app.drain_updates();
 
             // 2. Render the current state (pure, no I/O).
-            terminal.draw(|f| draw(f, &app))?;
+            guard.draw(|f| draw(f, &app))?;
 
             // 3. Handle keyboard input.
             if event::poll(poll_timeout)? {
@@ -968,7 +968,7 @@ fn main() -> Result<()> {
         Ok(())
     })();
 
-    terminal::restore();
+    drop(guard);
     result
 }
 

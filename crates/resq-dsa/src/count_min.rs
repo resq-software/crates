@@ -219,4 +219,101 @@ mod tests {
         cms.increment(b"sensor" as &[u8], 3);
         assert!(cms.estimate(b"sensor" as &[u8]) >= 3);
     }
+
+    #[test]
+    fn never_undercounts() {
+        let mut cms = CountMinSketch::new(0.01, 0.01);
+        // Insert many different keys and verify each estimate >= actual count
+        for i in 0..200 {
+            let key = format!("key-{i}");
+            let count = u64::try_from(i).unwrap() + 1;
+            cms.increment(&key, count);
+            assert!(
+                cms.estimate(&key) >= count,
+                "Undercount detected for {key}: estimate {} < actual {count}",
+                cms.estimate(&key)
+            );
+        }
+    }
+
+    #[test]
+    fn zero_increment_does_not_change_estimate() {
+        let mut cms = CountMinSketch::new(0.01, 0.01);
+        cms.increment("k", 0);
+        assert_eq!(cms.estimate("k"), 0);
+    }
+
+    #[test]
+    fn zero_increment_after_nonzero() {
+        let mut cms = CountMinSketch::new(0.01, 0.01);
+        cms.increment("k", 5);
+        cms.increment("k", 0);
+        assert!(cms.estimate("k") >= 5);
+    }
+
+    #[test]
+    fn very_large_counts() {
+        let mut cms = CountMinSketch::new(0.01, 0.01);
+        let large = u64::MAX / 2;
+        cms.increment("big", large);
+        assert!(cms.estimate("big") >= large);
+    }
+
+    #[test]
+    fn saturating_add_on_overflow() {
+        let mut cms = CountMinSketch::new(0.01, 0.01);
+        cms.increment("max", u64::MAX);
+        cms.increment("max", 1);
+        // Should saturate, not wrap around
+        assert_eq!(cms.estimate("max"), u64::MAX);
+    }
+
+    #[test]
+    fn unseen_key_returns_zero() {
+        let cms = CountMinSketch::new(0.01, 0.01);
+        assert_eq!(cms.estimate("never-added"), 0);
+    }
+
+    #[test]
+    fn from_raw_params_works() {
+        let mut cms = CountMinSketch::from_raw_params(100, 5);
+        cms.increment("x", 7);
+        assert!(cms.estimate("x") >= 7);
+        assert_eq!(cms.estimate("y"), 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "width must be > 0")]
+    fn from_raw_params_zero_width_panics() {
+        let _ = CountMinSketch::from_raw_params(0, 5);
+    }
+
+    #[test]
+    #[should_panic(expected = "depth must be > 0")]
+    fn from_raw_params_zero_depth_panics() {
+        let _ = CountMinSketch::from_raw_params(5, 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "epsilon must be in (0,1)")]
+    fn panics_on_zero_epsilon() {
+        let _ = CountMinSketch::new(0.0, 0.01);
+    }
+
+    #[test]
+    #[should_panic(expected = "delta must be in (0,1)")]
+    fn panics_on_one_delta() {
+        let _ = CountMinSketch::new(0.01, 1.0);
+    }
+
+    #[test]
+    fn multiple_keys_independent() {
+        let mut cms = CountMinSketch::new(0.001, 0.001);
+        cms.increment("alpha", 100);
+        cms.increment("beta", 200);
+        cms.increment("gamma", 300);
+        assert!(cms.estimate("alpha") >= 100);
+        assert!(cms.estimate("beta") >= 200);
+        assert!(cms.estimate("gamma") >= 300);
+    }
 }

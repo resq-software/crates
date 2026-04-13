@@ -343,4 +343,95 @@ mod tests {
     fn rabin_karp_full_match() {
         assert_eq!(rabin_karp("exact", "exact"), vec![0]);
     }
+
+    #[test]
+    fn empty_trie_search_returns_false() {
+        let t = Trie::new();
+        assert!(!t.search("anything"));
+        assert!(!t.search(""));
+    }
+
+    #[test]
+    fn starts_with_no_prefix_match() {
+        let mut t = Trie::new();
+        t.insert("apple");
+        t.insert("banana");
+        assert!(t.starts_with("cherry").is_empty());
+        assert!(t.starts_with("app1").is_empty());
+    }
+
+    #[test]
+    fn insert_duplicate_is_idempotent() {
+        let mut t = Trie::new();
+        t.insert("hello");
+        t.insert("hello");
+        t.insert("hello");
+        assert!(t.search("hello"));
+        // starts_with should return exactly one match
+        let results = t.starts_with("hello");
+        assert_eq!(results, vec!["hello"]);
+    }
+
+    #[test]
+    fn rabin_karp_no_matches() {
+        assert!(rabin_karp("abcdefgh", "xyz").is_empty());
+        assert!(rabin_karp("aaaa", "b").is_empty());
+    }
+
+    #[test]
+    fn rabin_karp_overlapping_patterns() {
+        assert_eq!(rabin_karp("aaaa", "aa"), vec![0, 1, 2]);
+        assert_eq!(rabin_karp("abababab", "abab"), vec![0, 2, 4]);
+    }
+
+    #[test]
+    fn rabin_karp_empty_text() {
+        assert!(rabin_karp("", "pattern").is_empty());
+    }
+
+    #[test]
+    fn rabin_karp_both_empty() {
+        // Empty pattern always returns empty
+        assert!(rabin_karp("", "").is_empty());
+    }
+
+    #[test]
+    fn rabin_karp_single_char_pattern() {
+        assert_eq!(rabin_karp("abcabc", "a"), vec![0, 3]);
+        assert_eq!(rabin_karp("aaa", "a"), vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn trie_prefix_is_not_word() {
+        let mut t = Trie::new();
+        t.insert("testing");
+        assert!(!t.search("test"));
+        assert!(!t.search("t"));
+        assert!(t.search("testing"));
+    }
+
+    #[test]
+    fn trie_starts_with_returns_exact_prefix_if_word() {
+        let mut t = Trie::new();
+        t.insert("test");
+        t.insert("testing");
+        t.insert("tested");
+        let mut r = t.starts_with("test");
+        r.sort();
+        assert_eq!(r, vec!["test", "tested", "testing"]);
+    }
+
+    #[test]
+    fn trie_default_is_empty() {
+        let t = Trie::default();
+        assert!(!t.search(""));
+        assert!(!t.search("a"));
+    }
+
+    #[test]
+    fn rabin_karp_repeated_pattern_in_text() {
+        let text = "xyzxyzxyz";
+        let matches = rabin_karp(text, "xyz");
+        assert_eq!(matches, vec![0, 3, 6]);
+    }
 }

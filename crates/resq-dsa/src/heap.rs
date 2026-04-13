@@ -272,4 +272,85 @@ mod tests {
         kept.sort_unstable();
         assert_eq!(kept, vec![0, 1, 2]);
     }
+
+    #[test]
+    fn eviction_keeps_correct_k() {
+        // Insert K+1 items, verify the largest-distance item is evicted
+        let mut h = BoundedHeap::new(3, |x: &Item| x.dist);
+        h.insert(Item { id: 1, dist: 5.0 });
+        h.insert(Item { id: 2, dist: 3.0 });
+        h.insert(Item { id: 3, dist: 8.0 });
+        // Heap is full with [5, 3, 8], root (max) should be 8
+        assert_eq!(h.peek().unwrap().id, 3); // id=3 has dist 8.0
+
+        // Insert item with dist 4.0 — should evict id=3 (dist 8.0)
+        h.insert(Item { id: 4, dist: 4.0 });
+        assert_eq!(h.len(), 3);
+
+        let sorted: Vec<u32> = h.to_sorted().iter().map(|x| x.id).collect();
+        assert_eq!(sorted, vec![2, 4, 1]); // 3.0, 4.0, 5.0
+    }
+
+    #[test]
+    fn to_sorted_ascending_order() {
+        let mut h = BoundedHeap::new(5, |x: &Item| x.dist);
+        h.insert(Item { id: 1, dist: 50.0 });
+        h.insert(Item { id: 2, dist: 10.0 });
+        h.insert(Item { id: 3, dist: 30.0 });
+        h.insert(Item { id: 4, dist: 20.0 });
+        h.insert(Item { id: 5, dist: 40.0 });
+
+        let dists: Vec<f64> = h.to_sorted().iter().map(|x| x.dist).collect();
+        // Must be in ascending order
+        for w in dists.windows(2) {
+            assert!(w[0] <= w[1], "to_sorted not ascending: {dists:?}");
+        }
+    }
+
+    #[test]
+    fn limit_zero_peek_is_none() {
+        let h = BoundedHeap::new(0, |x: &Item| x.dist);
+        assert!(h.peek().is_none());
+        assert!(h.to_sorted().is_empty());
+        assert_eq!(h.len(), 0);
+    }
+
+    #[test]
+    fn insert_descending_order() {
+        // Worst case for max-heap: items arrive in descending order
+        let mut h = BoundedHeap::new(3, |x: &Item| x.dist);
+        for i in (0..10).rev() {
+            h.insert(Item {
+                id: i,
+                dist: f64::from(i),
+            });
+        }
+        assert_eq!(h.len(), 3);
+        let sorted: Vec<u32> = h.to_sorted().iter().map(|x| x.id).collect();
+        assert_eq!(sorted, vec![0, 1, 2]); // three smallest
+    }
+
+    #[test]
+    fn insert_ascending_order() {
+        // Items arrive in ascending order — first K fill, rest are rejected
+        let mut h = BoundedHeap::new(3, |x: &Item| x.dist);
+        for i in 0..10 {
+            h.insert(Item {
+                id: i,
+                dist: f64::from(i),
+            });
+        }
+        assert_eq!(h.len(), 3);
+        let sorted: Vec<u32> = h.to_sorted().iter().map(|x| x.id).collect();
+        assert_eq!(sorted, vec![0, 1, 2]); // first three remain
+    }
+
+    #[test]
+    fn single_insert_then_peek() {
+        let mut h = BoundedHeap::new(5, |x: &Item| x.dist);
+        h.insert(Item { id: 42, dist: 3.25 });
+        assert_eq!(h.len(), 1);
+        assert!(!h.is_empty());
+        assert_eq!(h.peek().unwrap().id, 42);
+    }
 }

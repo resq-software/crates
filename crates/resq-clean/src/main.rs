@@ -190,10 +190,8 @@ async fn main() -> Result<()> {
     let mut app = App::new(root, args.dry_run);
     app.scan();
 
-    let mut terminal = terminal::init()?;
-    let result = terminal::run_loop(&mut terminal, 100, &mut app);
-    terminal::restore();
-    result
+    let mut guard = terminal::init()?;
+    terminal::run_loop(&mut guard, 100, &mut app)
 }
 
 fn draw_ui(f: &mut Frame, app: &mut App) {

@@ -357,4 +357,123 @@ mod tests {
         let (_, cost) = g.dijkstra(&"A", &"C").expect("Path should exist");
         assert_eq!(cost, 2); // takes the cheaper A->B edge
     }
+
+    #[test]
+    fn disconnected_graph_dijkstra_returns_none() {
+        let mut g = Graph::<&str>::new();
+        g.add_edge("A", "B", 1);
+        g.add_edge("C", "D", 1);
+        // A and C are in different components
+        assert!(g.dijkstra(&"A", &"D").is_none());
+        assert!(g.dijkstra(&"C", &"B").is_none());
+    }
+
+    #[test]
+    fn self_loop_dijkstra() {
+        let mut g = Graph::<&str>::new();
+        g.add_edge("A", "A", 5);
+        g.add_edge("A", "B", 1);
+        let (path, cost) = g.dijkstra(&"A", &"B").expect("Path should exist");
+        assert_eq!(path, vec!["A", "B"]);
+        assert_eq!(cost, 1);
+    }
+
+    #[test]
+    fn single_node_graph_dijkstra_self() {
+        let g = Graph::<&str>::new();
+        // No edges at all; start == end => cost 0
+        let (path, cost) = g.dijkstra(&"X", &"X").expect("Self path should exist");
+        assert_eq!(path, vec!["X"]);
+        assert_eq!(cost, 0);
+    }
+
+    #[test]
+    fn single_node_graph_dijkstra_unreachable() {
+        let g = Graph::<&str>::new();
+        assert!(g.dijkstra(&"X", &"Y").is_none());
+    }
+
+    #[test]
+    fn astar_nontrivial_heuristic() {
+        // Grid-like graph where heuristic is Manhattan distance
+        // Nodes are (row, col) encoded as row*10+col
+        let mut g = Graph::<i32>::new();
+        // Row 0: 0->1->2
+        g.add_edge(0, 1, 1);
+        g.add_edge(1, 2, 1);
+        // Row 1: 10->11->12
+        g.add_edge(10, 11, 1);
+        g.add_edge(11, 12, 1);
+        // Vertical: 0->10, 1->11, 2->12
+        g.add_edge(0, 10, 1);
+        g.add_edge(1, 11, 1);
+        g.add_edge(2, 12, 1);
+        // Also a long path: 0->10->11->12
+        // Shortest from 0 to 12: 0->1->2->12 (cost 3) or 0->1->11->12 (cost 3)
+
+        let manhattan = |a: &i32, b: &i32| -> u64 {
+            let (ar, ac) = (a / 10, a % 10);
+            let (br, bc) = (b / 10, b % 10);
+            u64::from((ar - br).unsigned_abs()) + u64::from((ac - bc).unsigned_abs())
+        };
+
+        let (path, cost) = g.astar(&0, &12, manhattan).expect("Path should exist");
+        assert_eq!(cost, 3);
+        assert_eq!(*path.first().unwrap(), 0);
+        assert_eq!(*path.last().unwrap(), 12);
+    }
+
+    #[test]
+    fn astar_unreachable() {
+        let mut g = Graph::<u64>::new();
+        g.add_edge(0, 1, 1);
+        assert!(g.astar(&0, &99, |a, b| a.abs_diff(*b)).is_none());
+    }
+
+    #[test]
+    fn bfs_ordering_is_breadth_first() {
+        // Build a tree:
+        //       A
+        //      / \
+        //     B   C
+        //    / \
+        //   D   E
+        let mut g = Graph::<&str>::new();
+        g.add_edge("A", "B", 1);
+        g.add_edge("A", "C", 1);
+        g.add_edge("B", "D", 1);
+        g.add_edge("B", "E", 1);
+        let result = g.bfs(&"A");
+        // A must be first
+        assert_eq!(result[0], "A");
+        // B and C must come before D and E
+        let pos = |node: &str| result.iter().position(|&n| n == node).unwrap();
+        assert!(pos("B") < pos("D"));
+        assert!(pos("B") < pos("E"));
+        assert!(pos("C") < pos("D"));
+        assert!(pos("C") < pos("E"));
+    }
+
+    #[test]
+    fn bfs_single_node_no_edges() {
+        let g = Graph::<&str>::new();
+        let result = g.bfs(&"lonely");
+        assert_eq!(result, vec!["lonely"]);
+    }
+
+    #[test]
+    fn default_creates_empty_graph() {
+        let g = Graph::<i32>::default();
+        assert!(g.dijkstra(&0, &1).is_none());
+        assert_eq!(g.bfs(&0), vec![0]);
+    }
+
+    #[test]
+    fn large_weight_path() {
+        let mut g = Graph::<&str>::new();
+        g.add_edge("A", "B", u64::MAX - 1);
+        let (path, cost) = g.dijkstra(&"A", &"B").expect("Path should exist");
+        assert_eq!(path, vec!["A", "B"]);
+        assert_eq!(cost, u64::MAX - 1);
+    }
 }

@@ -286,4 +286,93 @@ mod tests {
         bf.add("");
         assert!(bf.has(""));
     }
+
+    #[test]
+    fn false_positive_rate_within_bounds() {
+        let capacity = 10_000;
+        let target_fpr = 0.05;
+        let mut bf = BloomFilter::new(capacity, target_fpr);
+
+        // Insert `capacity` items
+        for i in 0..capacity {
+            bf.add(format!("present-{i}"));
+        }
+
+        // Check a disjoint set of items that were NOT inserted
+        let test_count = 50_000;
+        let mut false_positives = 0;
+        for i in 0..test_count {
+            if bf.has(format!("absent-{i}")) {
+                false_positives += 1;
+            }
+        }
+
+        let observed_fpr = f64::from(false_positives) / f64::from(test_count);
+        // Allow 2x the target rate as headroom for hash quality variance
+        assert!(
+            observed_fpr < target_fpr * 2.0,
+            "Observed FPR {observed_fpr:.4} exceeds 2x target {target_fpr}"
+        );
+    }
+
+    #[test]
+    fn empty_filter_has_returns_false() {
+        let bf = BloomFilter::new(100, 0.01);
+        assert!(!bf.has("anything"));
+        assert!(!bf.has(""));
+        assert!(!bf.has(b"bytes" as &[u8]));
+    }
+
+    #[test]
+    fn single_item_insert_and_query() {
+        let mut bf = BloomFilter::new(1000, 0.01);
+        bf.add("only-one");
+        assert!(bf.has("only-one"));
+        assert_eq!(bf.len(), 1);
+        assert!(!bf.is_empty());
+    }
+
+    #[test]
+    fn clear_then_has_returns_false() {
+        let mut bf = BloomFilter::new(100, 0.01);
+        bf.add("x");
+        bf.add("y");
+        assert!(bf.has("x"));
+        bf.clear();
+        assert!(!bf.has("x"));
+        assert!(!bf.has("y"));
+        assert_eq!(bf.len(), 0);
+        assert!(bf.is_empty());
+    }
+
+    #[test]
+    fn duplicate_add_does_not_corrupt() {
+        let mut bf = BloomFilter::new(100, 0.01);
+        bf.add("dup");
+        bf.add("dup");
+        bf.add("dup");
+        assert!(bf.has("dup"));
+        // Count tracks calls, not unique items
+        assert_eq!(bf.len(), 3);
+    }
+
+    #[test]
+    fn from_raw_params_minimal() {
+        // Smallest possible filter: 1 bit, 1 hash
+        let mut bf = BloomFilter::from_raw_params(1, 1);
+        bf.add("a");
+        assert!(bf.has("a"));
+    }
+
+    #[test]
+    #[should_panic(expected = "bit_count must be > 0")]
+    fn from_raw_params_zero_bits_panics() {
+        let _ = BloomFilter::from_raw_params(0, 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "hash_count must be > 0")]
+    fn from_raw_params_zero_hashes_panics() {
+        let _ = BloomFilter::from_raw_params(1, 0);
+    }
 }
