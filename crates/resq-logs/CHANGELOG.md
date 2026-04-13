@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.14](https://github.com/resq-software/crates/releases/tag/0.1.14) - 2026-04-13
+
+### Added
+
+- Repo hardening — RAII terminal guard, cargo-deny, 67 new tests ([#40](https://github.com/resq-software/crates/pull/40))
+
+### Changed
+
+- Rename crate directories to match package names, fix stale references, and add comprehensive docs
+
+### Fixed
+
+- Critical correctness bugs + 39 new tests ([#39](https://github.com/resq-software/crates/pull/39))
+
+
+
 ## [0.1.13](https://github.com/resq-software/crates/compare/resq-logs-v0.1.12...resq-logs-v0.1.13) - 2026-04-08
 
 ### Other

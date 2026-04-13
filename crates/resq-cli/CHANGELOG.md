@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.5](https://github.com/resq-software/crates/releases/tag/0.2.5) - 2026-04-13
+
+### Added
+
+- Add comprehensive examples directory with runnable demos ([#38](https://github.com/resq-software/crates/pull/38))
+
+### Changed
+
+- Rename crate directories to match package names, fix stale references, and add comprehensive docs
+
+
+
 ## [0.2.4](https://github.com/resq-software/crates/compare/resq-cli-v0.2.3...resq-cli-v0.2.4) - 2026-04-08
 
 ### Other
