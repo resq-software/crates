@@ -22,6 +22,8 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::process::Command;
 
+use crate::commands::hook_templates::HOOK_TEMPLATES;
+
 /// Arguments for the 'dev' command.
 #[derive(Parser, Debug)]
 pub struct DevArgs {
@@ -41,6 +43,25 @@ pub enum DevCommands {
     Upgrade(UpgradeArgs),
     /// Install git hooks from .git-hooks directory
     InstallHooks,
+    /// Scaffold a repo-specific `.git-hooks/local-<hook>` file
+    ScaffoldLocalHook(ScaffoldLocalHookArgs),
+}
+
+/// Arguments for the `scaffold-local-hook` command.
+#[derive(Parser, Debug)]
+pub struct ScaffoldLocalHookArgs {
+    /// Project kind. `auto` detects from root marker files
+    /// (Cargo.toml, pyproject.toml, package.json, *.sln, CMakeLists.txt, flake.nix).
+    #[arg(long, default_value = "auto")]
+    pub kind: String,
+
+    /// Which hook to scaffold a local override for (e.g. `pre-push`).
+    #[arg(long, default_value = "pre-push")]
+    pub hook: String,
+
+    /// Overwrite an existing `local-<hook>` file.
+    #[arg(long)]
+    pub force: bool,
 }
 
 /// Arguments for the 'kill-ports' command.
@@ -90,38 +111,9 @@ pub fn run(args: DevArgs) -> Result<()> {
         DevCommands::SyncEnv(args) => run_sync_env(args),
         DevCommands::Upgrade(args) => run_upgrade(args),
         DevCommands::InstallHooks => run_install_hooks(),
+        DevCommands::ScaffoldLocalHook(args) => run_scaffold_local_hook(args),
     }
 }
-
-/// Canonical hook templates. Kept in sync with
-/// https://github.com/resq-software/dev/tree/main/scripts/git-hooks — both
-/// sources ship the same content until `dev` retires its copy.
-const HOOK_TEMPLATES: &[(&str, &str)] = &[
-    (
-        "pre-commit",
-        include_str!("../../templates/git-hooks/pre-commit"),
-    ),
-    (
-        "commit-msg",
-        include_str!("../../templates/git-hooks/commit-msg"),
-    ),
-    (
-        "prepare-commit-msg",
-        include_str!("../../templates/git-hooks/prepare-commit-msg"),
-    ),
-    (
-        "pre-push",
-        include_str!("../../templates/git-hooks/pre-push"),
-    ),
-    (
-        "post-checkout",
-        include_str!("../../templates/git-hooks/post-checkout"),
-    ),
-    (
-        "post-merge",
-        include_str!("../../templates/git-hooks/post-merge"),
-    ),
-];
 
 fn run_install_hooks() -> Result<()> {
     let root = crate::utils::find_project_root();
@@ -189,6 +181,135 @@ fn run_install_hooks() -> Result<()> {
     }
 
     println!("\n✅ Successfully installed {count} git hooks!");
+    Ok(())
+}
+
+/// Per-kind local-hook templates embedded at compile time.
+/// The outer index is `(kind, hook_name, content)`.
+const LOCAL_HOOK_TEMPLATES: &[(&str, &str, &str)] = &[
+    (
+        "rust",
+        "pre-push",
+        include_str!("../../templates/local-hooks/rust/pre-push"),
+    ),
+    (
+        "python",
+        "pre-push",
+        include_str!("../../templates/local-hooks/python/pre-push"),
+    ),
+    (
+        "node",
+        "pre-push",
+        include_str!("../../templates/local-hooks/node/pre-push"),
+    ),
+    (
+        "dotnet",
+        "pre-push",
+        include_str!("../../templates/local-hooks/dotnet/pre-push"),
+    ),
+    (
+        "cpp",
+        "pre-push",
+        include_str!("../../templates/local-hooks/cpp/pre-push"),
+    ),
+    (
+        "nix",
+        "pre-push",
+        include_str!("../../templates/local-hooks/nix/pre-push"),
+    ),
+];
+
+fn detect_kind(root: &Path) -> Option<&'static str> {
+    if root.join("Cargo.toml").exists() {
+        return Some("rust");
+    }
+    if root.join("pyproject.toml").exists() || root.join("uv.lock").exists() {
+        return Some("python");
+    }
+    if root.join("package.json").exists() || root.join("bun.lockb").exists() {
+        return Some("node");
+    }
+    // .NET — any .sln or .csproj at the root
+    if let Ok(rd) = std::fs::read_dir(root) {
+        for entry in rd.flatten() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if name.ends_with(".sln") || name.ends_with(".csproj") {
+                return Some("dotnet");
+            }
+        }
+    }
+    if root.join("CMakeLists.txt").exists()
+        || root.join("conanfile.txt").exists()
+        || root.join("conanfile.py").exists()
+    {
+        return Some("cpp");
+    }
+    if root.join("flake.nix").exists() {
+        return Some("nix");
+    }
+    None
+}
+
+fn run_scaffold_local_hook(args: ScaffoldLocalHookArgs) -> Result<()> {
+    let root = crate::utils::find_project_root();
+
+    let kind = if args.kind == "auto" {
+        detect_kind(&root).context(
+            "Could not auto-detect repo kind. Pass --kind <rust|python|node|dotnet|cpp|nix>.",
+        )?
+    } else {
+        // Validate against known kinds
+        let known = ["rust", "python", "node", "dotnet", "cpp", "nix"];
+        if !known.contains(&args.kind.as_str()) {
+            anyhow::bail!(
+                "Unknown --kind '{}'. Valid: {}.",
+                args.kind,
+                known.join(", ")
+            );
+        }
+        // Convert &String to &'static str via the known list lookup
+        known
+            .iter()
+            .copied()
+            .find(|k| *k == args.kind)
+            .expect("validated above")
+    };
+
+    let body = LOCAL_HOOK_TEMPLATES
+        .iter()
+        .find(|(k, h, _)| *k == kind && *h == args.hook)
+        .map(|(_, _, c)| *c)
+        .with_context(|| {
+            format!(
+                "No local-hook template for kind={kind} hook={}. \
+                 Currently supported: pre-push.",
+                args.hook
+            )
+        })?;
+
+    let hooks_dir = root.join(".git-hooks");
+    std::fs::create_dir_all(&hooks_dir)
+        .with_context(|| format!("Failed to create {}", hooks_dir.display()))?;
+
+    let dest = hooks_dir.join(format!("local-{}", args.hook));
+    if dest.exists() && !args.force {
+        anyhow::bail!(
+            "{} already exists. Pass --force to overwrite.",
+            dest.display()
+        );
+    }
+
+    std::fs::write(&dest, body).with_context(|| format!("Failed to write {}", dest.display()))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&dest)?.permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&dest, perms)?;
+    }
+
+    println!("✅ Wrote {} ({} template).", dest.display(), kind);
     Ok(())
 }
 

@@ -66,6 +66,8 @@ enum Commands {
     Version(commands::version::VersionArgs),
     /// Manage documentation export and publication
     Docs(commands::docs::DocsArgs),
+    /// Inspect and maintain installed git hooks (doctor, update, status)
+    Hooks(commands::hooks::HooksArgs),
 }
 
 #[tokio::main]
@@ -90,6 +92,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::PreCommit(args) => commands::pre_commit::run(args).await?,
         Commands::Version(args) => commands::version::run(args)?,
         Commands::Docs(args) => commands::docs::run(args)?,
+        Commands::Hooks(args) => commands::hooks::run(args)?,
     }
 
     Ok(())

@@ -37,6 +37,10 @@ pub mod dev;
 pub mod docs;
 /// Service exploration and operations.
 pub mod explore;
+/// Canonical git-hook templates embedded for scaffolding and drift detection.
+pub mod hook_templates;
+/// Hooks visibility and maintenance (`resq hooks doctor/update/status`).
+pub mod hooks;
 /// Low-quality image placeholder generation.
 pub mod lqip;
 /// Pre-commit hook logic.
