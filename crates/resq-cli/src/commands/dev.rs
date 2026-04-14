@@ -221,19 +221,31 @@ fn detect_kind(root: &Path) -> Option<&'static str> {
     if root.join("Cargo.toml").exists() {
         return Some("rust");
     }
-    if root.join("pyproject.toml").exists() || root.join("uv.lock").exists() {
+    if root.join("pyproject.toml").exists()
+        || root.join("uv.lock").exists()
+        || root.join("requirements.txt").exists()
+        || root.join("Pipfile").exists()
+        || root.join("setup.py").exists()
+    {
         return Some("python");
     }
-    if root.join("package.json").exists() || root.join("bun.lockb").exists() {
+    if root.join("package.json").exists()
+        || root.join("bun.lockb").exists()
+        || root.join("bun.lock").exists()
+        || root.join("package-lock.json").exists()
+        || root.join("yarn.lock").exists()
+        || root.join("pnpm-lock.yaml").exists()
+    {
         return Some("node");
     }
-    // .NET — any .sln or .csproj at the root
+    // .NET — any .sln/.csproj/.fsproj/.vbproj at the root, case-insensitive.
     if let Ok(rd) = std::fs::read_dir(root) {
         for entry in rd.flatten() {
-            let name = entry.file_name();
-            let name = name.to_string_lossy();
-            if name.ends_with(".sln") || name.ends_with(".csproj") {
-                return Some("dotnet");
+            if let Some(ext) = entry.path().extension().and_then(|e| e.to_str()) {
+                let lower = ext.to_ascii_lowercase();
+                if matches!(lower.as_str(), "sln" | "csproj" | "fsproj" | "vbproj") {
+                    return Some("dotnet");
+                }
             }
         }
     }

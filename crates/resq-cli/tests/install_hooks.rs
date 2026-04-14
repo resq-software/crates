@@ -1,9 +1,11 @@
 // Copyright 2026 ResQ
 // SPDX-License-Identifier: Apache-2.0
-//
-// Integration tests for `resq dev install-hooks`, `resq dev scaffold-local-hook`,
-// and `resq hooks {doctor, update, status}`. Invokes the built `resq` binary
-// against a fresh tempdir git repo to verify end-to-end behavior.
+
+//! Integration tests for `resq dev install-hooks`, `resq dev scaffold-local-hook`,
+//! and `resq hooks {doctor, update, status}`. Invokes the built `resq` binary
+//! against a fresh tempdir git repo to verify end-to-end behavior.
+
+#![allow(missing_docs)]
 
 use std::path::Path;
 use std::process::Command;
