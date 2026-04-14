@@ -112,28 +112,48 @@ jobs:
           cd dist
           sha256sum * > SHA256SUMS
 
-      # Use `gh release upload` rather than softprops/action-gh-release: the
-      # release is created by release-plz first (which marks it immutable),
-      # so any subsequent attempt to edit metadata fails with
-      # "target_commitish cannot be changed when release is immutable".
-      # `gh release upload` only attaches files; --clobber overwrites any
-      # asset already present from a prior partial run.
-      - name: Upload release assets
+      # Create as DRAFT first, upload assets, THEN publish. The org
+      # enforces "immutable releases", which means a release is locked the
+      # moment it's published — so assets must be attached while still
+      # draft. release-plz.toml is configured to skip git_release for
+      # resq-cli specifically, so this workflow owns the release lifecycle
+      # end-to-end and never collides with release-plz's release object.
+      - name: Create + upload + publish
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
           cd dist
-          # If the release somehow doesn't exist yet (e.g. dispatched against
-          # a tag that release-plz hasn't published), create it as a draft so
-          # the upload doesn't 404. Idempotent.
-          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create "$TAG" \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "$TAG" \
-              --notes "Binary build for $TAG (assets attached by release.yml)."
+
+          # If a release already exists (e.g. from a prior failed run that
+          # left a draft, or if release-plz git_release_enable was flipped
+          # back on), delete it so we start clean. Immutable-published
+          # releases can't be deleted — in that case we bail loudly.
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            is_draft=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)
+            if [ "$is_draft" = "true" ]; then
+              echo "→ deleting existing draft $TAG to start clean"
+              gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes
+            else
+              echo "::error::Release $TAG already exists and is published (immutable). Cannot re-upload assets. Cut a new tag."
+              exit 1
+            fi
           fi
-          gh release upload "$TAG" * \
+
+          echo "→ creating draft release $TAG with assets"
+          gh release create "$TAG" \
             --repo "$GITHUB_REPOSITORY" \
-            --clobber
+            --draft \
+            --title "$TAG" \
+            --notes "Binary build for $TAG.
+
+Cross-platform resq CLI binaries + SHA256SUMS. Verify with:
+
+    sha256sum -c SHA256SUMS" \
+            -- *
+
+          echo "→ publishing release $TAG (becomes immutable)"
+          gh release edit "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false

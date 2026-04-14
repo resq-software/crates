@@ -28,7 +28,12 @@ publish = true
 name = "resq-tui"
 publish = true
 
-# CLI has independent versioning
+# CLI has independent versioning.
+# Skip GitHub Release creation — release.yml (dispatched by release-plz.yml)
+# creates the release as a draft, attaches the cross-platform binaries, and
+# only then publishes. Required because the org enforces "immutable
+# releases": releases can only be edited while still draft.
 [[package]]
 name = "resq-cli"
 publish = true
+git_release_enable = false
