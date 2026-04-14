@@ -1,0 +1,119 @@
+# Copyright 2026 ResQ
+# SPDX-License-Identifier: Apache-2.0
+#
+# Validate the canonical git hook templates shipped by resq-cli:
+#   - shellcheck + bash-parse every template
+#   - ensure crates/resq-cli/templates/git-hooks/ matches .git-hooks/
+#     (the crates repo eats its own dogfood — both must stay in sync)
+#   - diff against resq-software/dev@main scripts/git-hooks/ (dev mirrors
+#     the same templates until Phase 4 retires that copy)
+
+name: hooks-sync
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'crates/resq-cli/templates/git-hooks/**'
+      - '.git-hooks/**'
+      - '.github/workflows/hooks-sync.yml'
+  pull_request:
+    paths:
+      - 'crates/resq-cli/templates/git-hooks/**'
+      - '.git-hooks/**'
+      - '.github/workflows/hooks-sync.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: shellcheck + parse
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update -y && sudo apt-get install -y shellcheck
+
+      - name: Run shellcheck on templates
+        run: |
+          shellcheck -S warning \
+            crates/resq-cli/templates/git-hooks/pre-commit \
+            crates/resq-cli/templates/git-hooks/commit-msg \
+            crates/resq-cli/templates/git-hooks/prepare-commit-msg \
+            crates/resq-cli/templates/git-hooks/pre-push \
+            crates/resq-cli/templates/git-hooks/post-checkout \
+            crates/resq-cli/templates/git-hooks/post-merge
+
+      - name: bash -n parse check (templates + installed hooks)
+        run: |
+          set -e
+          for f in \
+            crates/resq-cli/templates/git-hooks/pre-commit \
+            crates/resq-cli/templates/git-hooks/commit-msg \
+            crates/resq-cli/templates/git-hooks/prepare-commit-msg \
+            crates/resq-cli/templates/git-hooks/pre-push \
+            crates/resq-cli/templates/git-hooks/post-checkout \
+            crates/resq-cli/templates/git-hooks/post-merge \
+            .git-hooks/pre-commit \
+            .git-hooks/commit-msg \
+            .git-hooks/prepare-commit-msg \
+            .git-hooks/pre-push \
+            .git-hooks/post-checkout \
+            .git-hooks/post-merge; do
+            [ -f "$f" ] && bash -n "$f"
+          done
+
+  drift-check-local:
+    name: templates vs .git-hooks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Diff crates/resq-cli/templates/git-hooks/ vs .git-hooks/
+        run: |
+          rc=0
+          for h in pre-commit commit-msg prepare-commit-msg pre-push post-checkout post-merge; do
+            if ! diff -u "crates/resq-cli/templates/git-hooks/$h" ".git-hooks/$h"; then
+              echo "::error file=.git-hooks/$h::drifts from crates/resq-cli/templates/git-hooks/$h"
+              rc=1
+            fi
+          done
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::.git-hooks/ and crates/resq-cli/templates/git-hooks/ must be byte-identical."
+            echo "::error::Fix by copying one into the other: cp crates/resq-cli/templates/git-hooks/* .git-hooks/"
+            exit 1
+          fi
+          echo "✅ .git-hooks/ matches crates/resq-cli/templates/git-hooks/"
+
+  drift-check-dev:
+    name: templates vs resq-software/dev
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch canonical hooks from resq-software/dev@main
+        run: |
+          mkdir -p /tmp/dev-templates
+          for h in pre-commit commit-msg prepare-commit-msg pre-push post-checkout post-merge; do
+            curl -fsSL \
+              "https://raw.githubusercontent.com/resq-software/dev/main/scripts/git-hooks/$h" \
+              -o "/tmp/dev-templates/$h"
+          done
+
+      - name: Diff crates/resq-cli/templates/git-hooks/ vs dev/scripts/git-hooks/
+        run: |
+          rc=0
+          for h in pre-commit commit-msg prepare-commit-msg pre-push post-checkout post-merge; do
+            if ! diff -u "crates/resq-cli/templates/git-hooks/$h" "/tmp/dev-templates/$h"; then
+              echo "::error file=crates/resq-cli/templates/git-hooks/$h::drifts from resq-software/dev@main:scripts/git-hooks/$h"
+              rc=1
+            fi
+          done
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::Canonical hook templates in crates/ and dev/ must be byte-identical."
+            exit 1
+          fi
+          echo "✅ Templates match resq-software/dev@main"
