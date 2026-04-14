@@ -93,15 +93,62 @@ pub fn run(args: DevArgs) -> Result<()> {
     }
 }
 
+/// Canonical hook templates. Kept in sync with
+/// https://github.com/resq-software/dev/tree/main/scripts/git-hooks — both
+/// sources ship the same content until `dev` retires its copy.
+const HOOK_TEMPLATES: &[(&str, &str)] = &[
+    (
+        "pre-commit",
+        include_str!("../../templates/git-hooks/pre-commit"),
+    ),
+    (
+        "commit-msg",
+        include_str!("../../templates/git-hooks/commit-msg"),
+    ),
+    (
+        "prepare-commit-msg",
+        include_str!("../../templates/git-hooks/prepare-commit-msg"),
+    ),
+    (
+        "pre-push",
+        include_str!("../../templates/git-hooks/pre-push"),
+    ),
+    (
+        "post-checkout",
+        include_str!("../../templates/git-hooks/post-checkout"),
+    ),
+    (
+        "post-merge",
+        include_str!("../../templates/git-hooks/post-merge"),
+    ),
+];
+
 fn run_install_hooks() -> Result<()> {
     let root = crate::utils::find_project_root();
     let hooks_dir = root.join(".git-hooks");
 
-    if !hooks_dir.exists() {
-        anyhow::bail!(
-            "Hooks directory '.git-hooks' not found in project root: {}",
-            root.display()
-        );
+    // Scaffold from embedded templates if the directory is missing or empty.
+    // This makes `resq dev install-hooks` usable from a fresh clone without
+    // pre-shipped hook files. Existing hook content is never overwritten.
+    let should_scaffold = !hooks_dir.exists()
+        || std::fs::read_dir(&hooks_dir)
+            .map(|mut it| it.next().is_none())
+            .unwrap_or(true);
+
+    if should_scaffold {
+        println!("📝 Scaffolding canonical ResQ git hooks from embedded templates...");
+        std::fs::create_dir_all(&hooks_dir)
+            .with_context(|| format!("Failed to create {}", hooks_dir.display()))?;
+        for (name, body) in HOOK_TEMPLATES {
+            let dest = hooks_dir.join(name);
+            if dest.exists() {
+                continue;
+            }
+            std::fs::write(&dest, body)
+                .with_context(|| format!("Failed to write {}", dest.display()))?;
+            // Permissions are set below by the executable-bit loop that runs
+            // for every file in hooks_dir; no need to chmod again here.
+        }
     }
 
     println!("🔧 Setting up ResQ git hooks...");
