@@ -34,8 +34,10 @@ jobs:
             os: ubuntu-latest
             archive: tar.gz
             cross: true
+          # macOS x86_64 cross-built from the arm64 runner — no native Intel
+          # runner is in the free pool any more (macos-13 was the last one).
           - target: x86_64-apple-darwin
-            os: macos-13
+            os: macos-latest
             archive: tar.gz
           - target: aarch64-apple-darwin
             os: macos-latest
