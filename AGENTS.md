@@ -48,7 +48,9 @@ cargo test -p resq-dsa -- --ignored  # Run complexity benchmarks
 
 ## Git hooks
 
-Canonical hooks are maintained in [`resq-software/dev`](https://github.com/resq-software/dev/tree/main/scripts/git-hooks) and delegate to `resq pre-commit` from this workspace. This repo's own `.git-hooks/` predates the canonical contract and builds `resq-cli` locally as a bootstrap — it will converge on the canonical shims once `resq dev install-hooks` can scaffold from embedded templates. See [resq-software/dev/AGENTS.md#git-hooks](https://github.com/resq-software/dev/blob/main/AGENTS.md#git-hooks).
+This repo is the **source of truth** for canonical git-hook templates across the ResQ org. They live in [`crates/resq-cli/templates/git-hooks/`](crates/resq-cli/templates/git-hooks) and are embedded into the `resq` binary via `include_str!`, so `resq dev install-hooks` can scaffold them offline into any repo. The `.git-hooks/` copy in this repo's root is kept byte-identical by `hooks-sync.yml` CI.
+
+Sibling repos install these via [`resq-software/dev/scripts/install-hooks.sh`](https://github.com/resq-software/dev/blob/main/scripts/install-hooks.sh), which prefers the offline `resq dev install-hooks` path when the binary is available and falls back to raw-fetching from this repo's `master` branch. See [resq/AGENTS.md#git-hooks](https://github.com/resq-software/dev/blob/main/AGENTS.md#git-hooks) for the full contract.
 
 ## References
 - [Root README](README.md)

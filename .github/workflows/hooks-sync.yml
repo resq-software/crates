@@ -5,8 +5,10 @@
 #   - shellcheck + bash-parse every template
 #   - ensure crates/resq-cli/templates/git-hooks/ matches .git-hooks/
 #     (the crates repo eats its own dogfood — both must stay in sync)
-#   - diff against resq-software/dev@main scripts/git-hooks/ (dev mirrors
-#     the same templates until Phase 4 retires that copy)
+#
+# This repo is the sole source of truth for canonical hooks since Phase 4
+# retired the dev/ copy. The dev/ repo's install-hooks.sh fetches from
+# the crates raw URL, so any change here takes effect org-wide once merged.
 
 name: hooks-sync
 
@@ -88,32 +90,3 @@ jobs:
           fi
           echo "✅ .git-hooks/ matches crates/resq-cli/templates/git-hooks/"
 
-  drift-check-dev:
-    name: templates vs resq-software/dev
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Fetch canonical hooks from resq-software/dev@main
-        run: |
-          mkdir -p /tmp/dev-templates
-          for h in pre-commit commit-msg prepare-commit-msg pre-push post-checkout post-merge; do
-            curl -fsSL \
-              "https://raw.githubusercontent.com/resq-software/dev/main/scripts/git-hooks/$h" \
-              -o "/tmp/dev-templates/$h"
-          done
-
-      - name: Diff crates/resq-cli/templates/git-hooks/ vs dev/scripts/git-hooks/
-        run: |
-          rc=0
-          for h in pre-commit commit-msg prepare-commit-msg pre-push post-checkout post-merge; do
-            if ! diff -u "crates/resq-cli/templates/git-hooks/$h" "/tmp/dev-templates/$h"; then
-              echo "::error file=crates/resq-cli/templates/git-hooks/$h::drifts from resq-software/dev@main:scripts/git-hooks/$h"
-              rc=1
-            fi
-          done
-          if [ "$rc" -ne 0 ]; then
-            echo "::error::Canonical hook templates in crates/ and dev/ must be byte-identical."
-            exit 1
-          fi
-          echo "✅ Templates match resq-software/dev@main"
