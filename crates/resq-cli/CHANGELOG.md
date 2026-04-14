@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.6](https://github.com/resq-software/crates/releases/tag/0.2.6) - 2026-04-14
+
+
+
 ## [0.2.5](https://github.com/resq-software/crates/releases/tag/0.2.5) - 2026-04-14
 
 ### Added
