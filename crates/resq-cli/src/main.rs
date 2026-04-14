@@ -36,14 +36,8 @@ pub struct Cli {
 enum Commands {
     /// Manage copyright headers
     Copyright(commands::copyright::CopyrightArgs),
-    /// Generate LQIP for images
-    Lqip(commands::lqip::LqipArgs),
     /// Run audit in workspaces
     Audit(commands::audit::AuditArgs),
-    /// Analyze package cost
-    Cost(commands::cost::CostArgs),
-    /// Run tree-shake (tsr)
-    TreeShake(commands::tree_shake::TreeShakeArgs),
     /// Scan for secrets and credentials
     Secrets(commands::secrets::SecretsArgs),
     /// Repository and development utilities
@@ -77,10 +71,7 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Copyright(args) => commands::copyright::run(&args)?,
-        Commands::Lqip(args) => commands::lqip::run(args).await?,
         Commands::Audit(args) => commands::audit::run(args).await?,
-        Commands::Cost(args) => commands::cost::run(args).await?,
-        Commands::TreeShake(args) => commands::tree_shake::run(args).await?,
         Commands::Secrets(args) => commands::secrets::run(args).await?,
         Commands::Dev(args) => commands::dev::run(args)?,
         Commands::Explore(args) => commands::explore::run_explore(args).await?,

@@ -18,19 +18,20 @@
 //!
 //! # Commands
 //!
-//! - [`audit`] - Audit blockchain events
+//! - [`audit`] - Dependency + supply-chain audit
 //! - [`copyright`] - Check/update copyright headers
-//! - [`cost`] - Estimate cloud costs
-//! - [`lqip`] - Low-quality image placeholder generation
-//! - [`secrets`] - Secret management
-//! - [`tree_shake`] - Remove unused code
+//! - [`dev`] - Repo development utilities
+//! - [`docs`] - Documentation export + publication
+//! - [`explore`] - TUI explorers (launchers)
+//! - [`hooks`] - Canonical git-hook lifecycle
+//! - [`pre_commit`] - Unified pre-commit checks
+//! - [`secrets`] - Secret scanning
+//! - [`version`] - Version + changeset management
 
 /// Blockchain event auditing.
 pub mod audit;
 /// Copyright header management.
 pub mod copyright;
-/// Cloud cost estimation.
-pub mod cost;
 /// Development server management.
 pub mod dev;
 /// Documentation management and publication.
@@ -39,15 +40,11 @@ pub mod docs;
 pub mod explore;
 /// Canonical git-hook templates embedded for scaffolding and drift detection.
 pub mod hook_templates;
-/// Hooks visibility and maintenance (`resq hooks doctor/update/status`).
+/// Hooks lifecycle (`resq hooks install/scaffold-local/doctor/update/status`).
 pub mod hooks;
-/// Low-quality image placeholder generation.
-pub mod lqip;
 /// Pre-commit hook logic.
 pub mod pre_commit;
 /// Secret management.
 pub mod secrets;
-/// Unused code removal.
-pub mod tree_shake;
 /// Version management and changesets.
 pub mod version;
