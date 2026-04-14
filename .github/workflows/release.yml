@@ -99,6 +99,8 @@ jobs:
     name: publish release
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -110,11 +112,28 @@ jobs:
           cd dist
           sha256sum * > SHA256SUMS
 
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
-          files: |
-            dist/*
-          fail_on_unmatched_files: true
-          generate_release_notes: true
+      # Use `gh release upload` rather than softprops/action-gh-release: the
+      # release is created by release-plz first (which marks it immutable),
+      # so any subsequent attempt to edit metadata fails with
+      # "target_commitish cannot be changed when release is immutable".
+      # `gh release upload` only attaches files; --clobber overwrites any
+      # asset already present from a prior partial run.
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          cd dist
+          # If the release somehow doesn't exist yet (e.g. dispatched against
+          # a tag that release-plz hasn't published), create it as a draft so
+          # the upload doesn't 404. Idempotent.
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$TAG" \
+              --notes "Binary build for $TAG (assets attached by release.yml)."
+          fi
+          gh release upload "$TAG" * \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
