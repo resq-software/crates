@@ -110,12 +110,26 @@ pub fn run(args: DevArgs) -> Result<()> {
         DevCommands::KillPorts(args) => run_kill_ports(args),
         DevCommands::SyncEnv(args) => run_sync_env(args),
         DevCommands::Upgrade(args) => run_upgrade(args),
-        DevCommands::InstallHooks => run_install_hooks(),
-        DevCommands::ScaffoldLocalHook(args) => run_scaffold_local_hook(args),
+        DevCommands::InstallHooks => {
+            deprecation_notice("resq dev install-hooks", "resq hooks install");
+            run_install_hooks_impl()
+        }
+        DevCommands::ScaffoldLocalHook(args) => {
+            deprecation_notice("resq dev scaffold-local-hook", "resq hooks scaffold-local");
+            run_scaffold_local_hook_impl(args)
+        }
     }
 }
 
-fn run_install_hooks() -> Result<()> {
+fn deprecation_notice(old: &str, new: &str) {
+    eprintln!("warn  '{old}' is deprecated — use '{new}'. The old path will be removed in a future release.");
+}
+
+/// Install the canonical git hooks into the current project's `.git-hooks/`.
+///
+/// # Errors
+/// Returns an error if filesystem access or `git config` invocation fails.
+pub fn run_install_hooks_impl() -> Result<()> {
     let root = crate::utils::find_project_root();
     let hooks_dir = root.join(".git-hooks");
 
@@ -261,7 +275,12 @@ fn detect_kind(root: &Path) -> Option<&'static str> {
     None
 }
 
-fn run_scaffold_local_hook(args: ScaffoldLocalHookArgs) -> Result<()> {
+/// Scaffold a repo-specific `.git-hooks/local-<hook>` file from a kind template.
+///
+/// # Errors
+/// Returns an error if the kind is unknown, the template is missing, or
+/// filesystem access fails.
+pub fn run_scaffold_local_hook_impl(args: ScaffoldLocalHookArgs) -> Result<()> {
     let root = crate::utils::find_project_root();
 
     const KNOWN_KINDS: &[&str] = &["rust", "python", "node", "dotnet", "cpp", "nix"];

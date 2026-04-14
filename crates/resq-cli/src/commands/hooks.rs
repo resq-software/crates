@@ -40,6 +40,10 @@ pub struct HooksArgs {
 /// Hooks subcommands.
 #[derive(Subcommand, Debug)]
 pub enum HooksCommands {
+    /// Install canonical hooks into `.git-hooks/` and set `core.hooksPath`.
+    Install,
+    /// Scaffold a repo-specific `.git-hooks/local-<hook>` from a kind template.
+    ScaffoldLocal(crate::commands::dev::ScaffoldLocalHookArgs),
     /// Report installed hook status; exit 1 if any drift / missing file detected.
     Doctor,
     /// Rewrite installed canonical hooks from embedded templates (preserves `local-*`).
@@ -54,6 +58,11 @@ pub enum HooksCommands {
 /// Returns an error if filesystem access or `git config` invocation fails.
 pub fn run(args: HooksArgs) -> Result<()> {
     match args.command {
+        // `install` + `scaffold-local` share their implementation with the
+        // legacy `dev install-hooks` / `dev scaffold-local-hook` paths.
+        // When the old paths are removed, move the fn bodies here.
+        HooksCommands::Install => crate::commands::dev::run_install_hooks_impl(),
+        HooksCommands::ScaffoldLocal(a) => crate::commands::dev::run_scaffold_local_hook_impl(a),
         HooksCommands::Doctor => run_doctor(),
         HooksCommands::Update => run_update(),
         HooksCommands::Status => run_status(),
