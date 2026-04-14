@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Repo-specific pre-commit for the resq-cli home repo.
+#
+# The canonical pre-commit delegates to `resq pre-commit` but only looks on
+# PATH and ~/.cargo/bin. This repo *ships* resq-cli, so a contributor may be
+# working with a workspace-local build at target/{release,debug}/resq and not
+# have the binary installed globally. Runs only when PATH + cargo lookup both
+# failed — keeps the canonical contract while preserving the old behavior.
+set -euo pipefail
+
+# If PATH or ~/.cargo/bin already has resq, the canonical already ran it.
+if command -v resq >/dev/null 2>&1 || [ -x "$HOME/.cargo/bin/resq" ]; then
+    exit 0
+fi
+
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+if [ -x "$PROJECT_ROOT/target/release/resq" ]; then
+    RESQ_BIN="$PROJECT_ROOT/target/release/resq"
+elif [ -x "$PROJECT_ROOT/target/debug/resq" ]; then
+    RESQ_BIN="$PROJECT_ROOT/target/debug/resq"
+elif command -v cargo >/dev/null 2>&1; then
+    echo "📦 Building resq-cli from workspace for pre-commit checks..."
+    cargo build -q -p resq-cli
+    RESQ_BIN="$PROJECT_ROOT/target/debug/resq"
+else
+    echo "⚠️  resq not on PATH and cargo not available. Install it or run from nix develop." >&2
+    exit 0
+fi
+
+exec "$RESQ_BIN" pre-commit --root "$PROJECT_ROOT" "$@"

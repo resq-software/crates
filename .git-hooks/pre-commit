@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2026 ResQ
+# Copyright 2026 ResQ Software
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -7,49 +7,36 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Canonical ResQ pre-commit shim — source: resq-software/dev.
+# Delegates all logic to `resq pre-commit`; runs `.git-hooks/local-pre-commit`
+# as a repo-specific escape hatch if present and executable.
 
 set -euo pipefail
 
-# HOOK_PATH stores the absolute path to this script.
-if [ ${#BASH_SOURCE[@]} -gt 0 ] && [ -n "${BASH_SOURCE[0]:-}" ]; then
-    HOOK_PATH="${BASH_SOURCE[0]}"
-else
-    HOOK_PATH="$0"
-fi
-
-# Resolve symlinks
-HOOK_PATH=$(readlink -f "$HOOK_PATH")
-# SCRIPT_DIR stores the absolute path to the hooks directory.
-SCRIPT_DIR=$(dirname "$HOOK_PATH")
-# PROJECT_ROOT stores the absolute path to the project root.
-PROJECT_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
-
 [ -n "${GIT_HOOKS_SKIP:-}" ] && exit 0
 
-# ── Resolve resq CLI binary ─────────────────────────────────────────────────
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+
+# ── Resolve resq binary ─────────────────────────────────────────────────────
+# PATH first (covers nix develop + ~/.cargo/bin on PATH). Soft-skip otherwise
+# so a missing backend never blocks a commit silently — the user sees a hint.
 RESQ_BIN=""
 if command -v resq >/dev/null 2>&1; then
     RESQ_BIN="resq"
-elif [ -f "$PROJECT_ROOT/target/release/resq" ]; then
-    RESQ_BIN="$PROJECT_ROOT/target/release/resq"
-elif [ -f "$PROJECT_ROOT/target/debug/resq" ]; then
-    RESQ_BIN="$PROJECT_ROOT/target/debug/resq"
-elif command -v cargo >/dev/null 2>&1; then
-    echo "📦 Building resq CLI for pre-commit checks..."
-    cargo build -q -p resq-cli
-    RESQ_BIN="$PROJECT_ROOT/target/debug/resq"
+elif [ -x "$HOME/.cargo/bin/resq" ]; then
+    RESQ_BIN="$HOME/.cargo/bin/resq"
 fi
 
-if [ -z "$RESQ_BIN" ]; then
-    echo "⚠️  ResQ CLI not found and cannot be built. Skipping pre-commit checks."
-    exit 0
+if [ -n "$RESQ_BIN" ]; then
+    "$RESQ_BIN" pre-commit --root "$PROJECT_ROOT" "$@"
+else
+    echo "⚠️  resq not found — skipping ResQ pre-commit checks."
+    echo "    Install: enter 'nix develop', or run:"
+    echo "      cargo install --git https://github.com/resq-software/crates resq-cli"
 fi
 
-# ── Delegate to Rust CLI ─────────────────────────────────────────────────────
-# This runs: copyright, secrets, audit, formatting, and versioning prompt
-exec "$RESQ_BIN" pre-commit --root "$PROJECT_ROOT" "$@"
+# ── Local override ──────────────────────────────────────────────────────────
+LOCAL_HOOK="$PROJECT_ROOT/.git-hooks/local-pre-commit"
+if [ -x "$LOCAL_HOOK" ]; then
+    exec "$LOCAL_HOOK" "$@"
+fi
