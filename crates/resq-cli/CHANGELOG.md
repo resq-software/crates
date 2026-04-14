@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.5](https://github.com/resq-software/crates/releases/tag/0.2.5) - 2026-04-14
+
+### Added
+
+- *(resq-cli)* `hooks` subcommand + `dev scaffold-local-hook` ([#48](https://github.com/resq-software/crates/pull/48))
+- *(resq-cli)* Scaffold hooks from embedded templates + release workflow ([#46](https://github.com/resq-software/crates/pull/46))
+- Add comprehensive examples directory with runnable demos ([#38](https://github.com/resq-software/crates/pull/38))
+
+### Changed
+
+- Rename crate directories to match package names, fix stale references, and add comprehensive docs
+
+### Testing
+
+- *(resq-cli)* Integration tests + fix install-hooks partial-layout bug ([#49](https://github.com/resq-software/crates/pull/49))
+
+
+
 ## [0.2.5](https://github.com/resq-software/crates/releases/tag/0.2.5) - 2026-04-13
 
 ### Added
