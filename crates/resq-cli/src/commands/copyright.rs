@@ -40,7 +40,7 @@ pub struct CopyrightArgs {
     pub license: String,
 
     /// Copyright holder name
-    #[arg(short, long, default_value = "ResQ")]
+    #[arg(short, long, default_value = "ResQ Systems, Inc.")]
     pub author: String,
 
     /// Copyright year (defaults to current year)
