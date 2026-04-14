@@ -471,6 +471,7 @@ fn restage(files: &[String]) {
     }
 }
 
+#[allow(dead_code)]
 fn has_cmd(cmd: &str) -> bool {
     Command::new("which")
         .arg(cmd)
@@ -688,210 +689,81 @@ fn step_audit(root: &Path, tx: &mpsc::Sender<StepMsg>, idx: usize) -> StepResult
     }
 }
 
-fn step_format_rust(root: &Path) -> StepResult {
-    if staged_files(&[".rs"]).is_empty() {
+// Per-language format steps delegate their implementations to
+// `commands::format`, so both `resq pre-commit` and `resq format` stay in
+// sync. This wrapper captures the staged file list, calls the shared
+// function, and restages any rewrites.
+fn run_format_step<F>(root: &Path, exts: &[&str], formatter: F) -> StepResult
+where
+    F: FnOnce(&Path, &[String], bool) -> anyhow::Result<crate::commands::format::FormatOutcome>,
+{
+    let files = staged_files(exts);
+    if files.is_empty() {
         return StepResult {
             status: StepStatus::Skip,
             detail: Some("no files".into()),
             sub_lines: vec![],
         };
     }
-    if !has_cmd("cargo") {
-        return StepResult {
-            status: StepStatus::Skip,
-            detail: Some("no cargo".into()),
-            sub_lines: vec![],
-        };
-    }
-    let output = Command::new("cargo")
-        .args(["fmt", "--all"])
-        .current_dir(root)
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .output();
-    let ok = output.as_ref().map(|o| o.status.success()).unwrap_or(false);
-    if ok {
-        let _ = Command::new("git")
-            .args(["add", "-u"])
-            .current_dir(root)
-            .status();
-    } else if let Ok(ref o) = output {
-        // Show stderr only on failure (suppresses nightly-option warnings on stable)
-        let stderr = String::from_utf8_lossy(&o.stderr);
-        if !stderr.is_empty() {
-            eprintln!("{stderr}");
+    match formatter(root, &files, false) {
+        Ok(crate::commands::format::FormatOutcome::Clean)
+        | Ok(crate::commands::format::FormatOutcome::Formatted) => {
+            restage(&files);
+            StepResult {
+                status: StepStatus::Pass,
+                detail: None,
+                sub_lines: vec![],
+            }
         }
-    }
-    StepResult {
-        status: if ok {
-            StepStatus::Pass
-        } else {
-            StepStatus::Fail
+        Ok(crate::commands::format::FormatOutcome::Skipped(reason)) => StepResult {
+            status: StepStatus::Skip,
+            detail: Some(reason),
+            sub_lines: vec![],
         },
-        detail: None,
-        sub_lines: vec![],
+        Ok(crate::commands::format::FormatOutcome::Failed(stderr)) => {
+            if !stderr.trim().is_empty() {
+                eprintln!("{stderr}");
+            }
+            StepResult {
+                status: StepStatus::Fail,
+                detail: None,
+                sub_lines: vec![],
+            }
+        }
+        Err(e) => StepResult {
+            status: StepStatus::Fail,
+            detail: Some(e.to_string()),
+            sub_lines: vec![],
+        },
     }
+}
+
+fn step_format_rust(root: &Path) -> StepResult {
+    run_format_step(root, &[".rs"], crate::commands::format::format_rust)
 }
 
 fn step_format_ts(root: &Path) -> StepResult {
-    let files = staged_files(&[".ts", ".tsx", ".js", ".jsx", ".json", ".css"]);
-    if files.is_empty() {
-        return StepResult {
-            status: StepStatus::Skip,
-            detail: Some("no files".into()),
-            sub_lines: vec![],
-        };
-    }
-    let biome = if has_cmd("biome") {
-        Some(("biome", vec![]))
-    } else if has_cmd("bunx") {
-        Some(("bunx", vec!["--bun", "biome"]))
-    } else {
-        None
-    };
-    let Some((cmd, prefix)) = biome else {
-        return StepResult {
-            status: StepStatus::Skip,
-            detail: Some("no biome".into()),
-            sub_lines: vec![],
-        };
-    };
-    let mut args = prefix.iter().map(|s| (*s).to_string()).collect::<Vec<_>>();
-    args.extend(["format".into(), "--write".into()]);
-    args.extend(files.iter().cloned());
-    let ok = Command::new(cmd)
-        .args(&args)
-        .current_dir(root)
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
-    if ok {
-        restage(&files);
-    }
-    StepResult {
-        status: if ok {
-            StepStatus::Pass
-        } else {
-            StepStatus::Fail
-        },
-        detail: None,
-        sub_lines: vec![],
-    }
+    run_format_step(
+        root,
+        &[".ts", ".tsx", ".js", ".jsx", ".json", ".css"],
+        crate::commands::format::format_ts,
+    )
 }
 
 fn step_format_python(root: &Path) -> StepResult {
-    let files = staged_files(&[".py"]);
-    if files.is_empty() {
-        return StepResult {
-            status: StepStatus::Skip,
-            detail: Some("no files".into()),
-            sub_lines: vec![],
-        };
-    }
-    if !has_cmd("ruff") {
-        return StepResult {
-            status: StepStatus::Skip,
-            detail: Some("no ruff".into()),
-            sub_lines: vec![],
-        };
-    }
-    let ok = Command::new("ruff")
-        .args(["format"])
-        .args(&files)
-        .current_dir(root)
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
-    if ok {
-        restage(&files);
-    }
-    StepResult {
-        status: if ok {
-            StepStatus::Pass
-        } else {
-            StepStatus::Fail
-        },
-        detail: None,
-        sub_lines: vec![],
-    }
+    run_format_step(root, &[".py"], crate::commands::format::format_python)
 }
 
 fn step_format_cpp(root: &Path) -> StepResult {
-    let files = staged_files(&[".cpp", ".cc", ".h", ".hpp"]);
-    if files.is_empty() {
-        return StepResult {
-            status: StepStatus::Skip,
-            detail: Some("no files".into()),
-            sub_lines: vec![],
-        };
-    }
-    if !has_cmd("clang-format") {
-        return StepResult {
-            status: StepStatus::Skip,
-            detail: Some("no clang-format".into()),
-            sub_lines: vec![],
-        };
-    }
-    let ok = Command::new("clang-format")
-        .arg("-i")
-        .args(&files)
-        .current_dir(root)
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
-    if ok {
-        restage(&files);
-    }
-    StepResult {
-        status: if ok {
-            StepStatus::Pass
-        } else {
-            StepStatus::Fail
-        },
-        detail: None,
-        sub_lines: vec![],
-    }
+    run_format_step(
+        root,
+        &[".cpp", ".cc", ".h", ".hpp"],
+        crate::commands::format::format_cpp,
+    )
 }
 
 fn step_format_csharp(root: &Path) -> StepResult {
-    let files = staged_files(&[".cs"]);
-    if files.is_empty() {
-        return StepResult {
-            status: StepStatus::Skip,
-            detail: Some("no files".into()),
-            sub_lines: vec![],
-        };
-    }
-    if !has_cmd("dotnet") {
-        return StepResult {
-            status: StepStatus::Skip,
-            detail: Some("no dotnet".into()),
-            sub_lines: vec![],
-        };
-    }
-    let ok = Command::new("dotnet")
-        .args([
-            "format",
-            "libs/dotnet/ResQ.Packages.sln",
-            "--verbosity",
-            "quiet",
-        ])
-        .current_dir(root)
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
-    if ok {
-        restage(&files);
-    }
-    StepResult {
-        status: if ok {
-            StepStatus::Pass
-        } else {
-            StepStatus::Fail
-        },
-        detail: None,
-        sub_lines: vec![],
-    }
+    run_format_step(root, &[".cs"], crate::commands::format::format_csharp)
 }
 
 // ── Worker & Main ────────────────────────────────────────────────────────────

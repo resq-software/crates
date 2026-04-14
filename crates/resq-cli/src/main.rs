@@ -40,6 +40,8 @@ enum Commands {
     Audit(commands::audit::AuditArgs),
     /// Scan for secrets and credentials
     Secrets(commands::secrets::SecretsArgs),
+    /// Format source files (Rust / TS / Python / C++ / C#)
+    Format(commands::format::FormatArgs),
     /// Repository and development utilities
     Dev(commands::dev::DevArgs),
     /// Launch Perf-Explorer (TUI)
@@ -73,6 +75,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Copyright(args) => commands::copyright::run(&args)?,
         Commands::Audit(args) => commands::audit::run(args).await?,
         Commands::Secrets(args) => commands::secrets::run(args).await?,
+        Commands::Format(args) => commands::format::run(args).await?,
         Commands::Dev(args) => commands::dev::run(args)?,
         Commands::Explore(args) => commands::explore::run_explore(args).await?,
         Commands::Logs(args) => commands::explore::run_logs(args).await?,

@@ -38,6 +38,8 @@ pub mod dev;
 pub mod docs;
 /// Service exploration and operations.
 pub mod explore;
+/// Polyglot source formatting (Rust, TS, Python, C++, C#).
+pub mod format;
 /// Canonical git-hook templates embedded for scaffolding and drift detection.
 pub mod hook_templates;
 /// Hooks lifecycle (`resq hooks install/scaffold-local/doctor/update/status`).
