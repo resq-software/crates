@@ -119,28 +119,26 @@ fn run_install_hooks() -> Result<()> {
     let root = crate::utils::find_project_root();
     let hooks_dir = root.join(".git-hooks");
 
-    // Scaffold from embedded templates if the directory is missing or empty.
-    // This makes `resq dev install-hooks` usable from a fresh clone without
-    // pre-shipped hook files. Existing hook content is never overwritten.
-    let should_scaffold = !hooks_dir.exists()
-        || std::fs::read_dir(&hooks_dir)
-            .map(|mut it| it.next().is_none())
-            .unwrap_or(true);
-
-    if should_scaffold {
-        println!("📝 Scaffolding canonical ResQ git hooks from embedded templates...");
-        std::fs::create_dir_all(&hooks_dir)
-            .with_context(|| format!("Failed to create {}", hooks_dir.display()))?;
-        for (name, body) in HOOK_TEMPLATES {
-            let dest = hooks_dir.join(name);
-            if dest.exists() {
-                continue;
-            }
-            std::fs::write(&dest, body)
-                .with_context(|| format!("Failed to write {}", dest.display()))?;
-            // Permissions are set below by the executable-bit loop that runs
-            // for every file in hooks_dir; no need to chmod again here.
+    // Scaffold any canonical hook the repo doesn't already have. The per-file
+    // `dest.exists()` guard preserves user-edited or repo-pinned content, so
+    // a partial layout (one custom hook, others missing) gets filled in
+    // rather than left half-installed.
+    std::fs::create_dir_all(&hooks_dir)
+        .with_context(|| format!("Failed to create {}", hooks_dir.display()))?;
+    let mut scaffolded = 0u32;
+    for (name, body) in HOOK_TEMPLATES {
+        let dest = hooks_dir.join(name);
+        if dest.exists() {
+            continue;
         }
+        std::fs::write(&dest, body)
+            .with_context(|| format!("Failed to write {}", dest.display()))?;
+        scaffolded += 1;
+        // Permissions are set below by the executable-bit loop that runs
+        // for every file in hooks_dir; no need to chmod again here.
+    }
+    if scaffolded > 0 {
+        println!("📝 Scaffolded {scaffolded} canonical hook(s) from embedded templates.");
     }
 
     println!("🔧 Setting up ResQ git hooks...");
