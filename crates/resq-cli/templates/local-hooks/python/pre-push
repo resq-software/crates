@@ -19,9 +19,12 @@ if [ -z "$RUFF" ]; then
 fi
 
 # Find pyproject.toml — prefer per-package layout, fall back to root.
-mapfile -d '' pyprojs < <(
-    find packages -maxdepth 2 -name pyproject.toml -print0 2>/dev/null
-)
+# Avoid `mapfile` so this works on macOS's default Bash 3.2.
+pyprojs=()
+while IFS= read -r -d '' p; do
+    pyprojs+=("$p")
+done < <(find packages -maxdepth 2 -name pyproject.toml -print0 2>/dev/null)
+
 if [ "${#pyprojs[@]}" -eq 0 ] && [ -f pyproject.toml ]; then
     pyprojs=("./pyproject.toml")
 fi

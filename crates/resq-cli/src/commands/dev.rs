@@ -254,26 +254,19 @@ fn detect_kind(root: &Path) -> Option<&'static str> {
 fn run_scaffold_local_hook(args: ScaffoldLocalHookArgs) -> Result<()> {
     let root = crate::utils::find_project_root();
 
-    let kind = if args.kind == "auto" {
+    const KNOWN_KINDS: &[&str] = &["rust", "python", "node", "dotnet", "cpp", "nix"];
+    let kind: &str = if args.kind == "auto" {
         detect_kind(&root).context(
             "Could not auto-detect repo kind. Pass --kind <rust|python|node|dotnet|cpp|nix>.",
         )?
+    } else if KNOWN_KINDS.contains(&args.kind.as_str()) {
+        args.kind.as_str()
     } else {
-        // Validate against known kinds
-        let known = ["rust", "python", "node", "dotnet", "cpp", "nix"];
-        if !known.contains(&args.kind.as_str()) {
-            anyhow::bail!(
-                "Unknown --kind '{}'. Valid: {}.",
-                args.kind,
-                known.join(", ")
-            );
-        }
-        // Convert &String to &'static str via the known list lookup
-        known
-            .iter()
-            .copied()
-            .find(|k| *k == args.kind)
-            .expect("validated above")
+        anyhow::bail!(
+            "Unknown --kind '{}'. Valid: {}.",
+            args.kind,
+            KNOWN_KINDS.join(", ")
+        );
     };
 
     let body = LOCAL_HOOK_TEMPLATES

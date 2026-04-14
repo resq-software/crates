@@ -99,7 +99,9 @@ fn audit() -> Result<HookAudit> {
     }
 
     let mut local = Vec::new();
-    if hooks_dir.exists() {
+    // Defensive: only enumerate when .git-hooks is actually a directory.
+    // A regular file or symlink-to-non-dir would otherwise return an error.
+    if hooks_dir.is_dir() {
         for entry in std::fs::read_dir(&hooks_dir)?.flatten() {
             let name = entry.file_name().to_string_lossy().into_owned();
             if let Some(stripped) = name.strip_prefix("local-") {
@@ -176,7 +178,9 @@ fn run_doctor() -> Result<()> {
         Ok(())
     } else {
         println!("\n❌ {issues} issue(s) detected.");
-        std::process::exit(1);
+        // Return a non-zero exit via anyhow so `Drop` runs normally. main()
+        // prints the error on a new line after our report.
+        anyhow::bail!("hook doctor found {issues} issue(s) — run 'resq hooks update' to fix");
     }
 }
 
