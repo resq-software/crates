@@ -20,7 +20,7 @@ version = 2
 ignore = []
 
 [licenses]
-unlicensed = "deny"
+version = 2
 confidence-threshold = 0.8
 allow = [
     "Apache-2.0",
@@ -33,16 +33,9 @@ allow = [
     "Zlib",
     "OpenSSL",
 ]
-deny = [
-    "GPL-2.0",
-    "GPL-3.0",
-    "AGPL-1.0",
-    "AGPL-3.0",
-    "LGPL-2.0",
-    "LGPL-2.1",
-    "LGPL-3.0",
-    "MPL-2.0",
-]
+# deny list removed: cargo-deny v2 derives denials from the absence of a
+# license in `allow`. GPL/AGPL/LGPL/MPL are not in `allow`, so they're
+# implicitly denied.
 
 [bans]
 multiple-versions = "warn"
