@@ -116,6 +116,17 @@ pub fn load_config() -> Result<AiConfig> {
         .or(project_cfg.base_url)
         .or(home_cfg.base_url);
 
+    if let Some(ref url_str) = base_url {
+        let parsed = reqwest::Url::parse(url_str)
+            .with_context(|| format!("base_url is not a valid URL: {url_str:?}"))?;
+        if parsed.scheme() != "https" {
+            bail!(
+                "base_url must use HTTPS to protect the API key (got scheme {:?})",
+                parsed.scheme()
+            );
+        }
+    }
+
     let max_tokens = project_cfg
         .max_tokens
         .or(home_cfg.max_tokens)
