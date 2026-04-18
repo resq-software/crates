@@ -1039,15 +1039,11 @@ pub async fn run(args: PreCommitArgs) -> Result<()> {
                             KeyCode::Left => {
                                 app.changeset_selector = app.changeset_selector.saturating_sub(1);
                             }
-                            KeyCode::Right => {
-                                if app.changeset_selector < 3 {
-                                    app.changeset_selector += 1;
-                                }
+                            KeyCode::Right if app.changeset_selector < 3 => {
+                                app.changeset_selector += 1;
                             }
-                            KeyCode::Char('m') => {
-                                if app.changeset_selector > 0 {
-                                    app.entering_message = true;
-                                }
+                            KeyCode::Char('m') if app.changeset_selector > 0 => {
+                                app.entering_message = true;
                             }
                             KeyCode::Enter => {
                                 let resp = match app.changeset_selector {

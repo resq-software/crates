@@ -217,8 +217,7 @@ pub fn rabin_karp(text: &str, pattern: &str) -> Vec<usize> {
         matches.push(0);
     }
 
-    let mut i = 1;
-    for next_char in chars {
+    for (i, next_char) in (1..).zip(chars) {
         let old_char = window[window_idx];
 
         // Remove old char
@@ -235,7 +234,6 @@ pub fn rabin_karp(text: &str, pattern: &str) -> Vec<usize> {
         if wh == ph && check_match(&window, window_idx, &pat) {
             matches.push(i);
         }
-        i += 1;
     }
 
     matches
