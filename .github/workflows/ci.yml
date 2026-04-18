@@ -1,18 +1,12 @@
-# Copyright 2026 ResQ
+# Copyright 2026 ResQ Software
+# SPDX-License-Identifier: Apache-2.0
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Thin CI wrapper. Dispatches to the org-wide reusable rust-ci workflow
+# (fmt + clippy + test + coverage + cargo-deny). Subsumes clippy.yml and
+# deny.yml (both removed in the same PR). Security scanning stays in
+# security.yml.
 
-name: Rust CI
+name: CI
 
 on:
   push:
@@ -23,36 +17,34 @@ on:
 permissions:
   contents: read
 
-env:
-  CARGO_TERM_COLOR: always
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: llvm-tools-preview
-      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
-      - uses: taiki-e/install-action@cargo-llvm-cov
-      - run: cargo llvm-cov --workspace --lcov --output-path lcov.info
-      - name: Upload coverage to Codecov
-        if: always()
-        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
-        with:
-          files: lcov.info
-          fail_ci_if_error: false
+  rust:
+    uses: resq-software/.github/.github/workflows/rust-ci.yml@2e2af3e5e32b646480a1cb1b41875e5073020814
+    with:
+      toolchain: stable
+      run-fmt: true
+      run-clippy: true
+      run-test: true
+      run-deny: true
+      run-coverage: true
+    secrets: inherit
 
-  fmt:
-    name: Format
+  required:
+    name: required
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    needs: [rust]
+    if: always()
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
-      - run: cargo fmt --all --check
+      - name: Aggregate
+        env:
+          RUST_RESULT: ${{ needs.rust.result }}
+        run: |
+          set -eu
+          case "$RUST_RESULT" in
+            success|skipped|"") echo "ok: rust=$RUST_RESULT" ;;
+            *) echo "::error::rust reusable returned: $RUST_RESULT"; exit 1 ;;
+          esac

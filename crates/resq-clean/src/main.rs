@@ -97,7 +97,7 @@ impl App {
                 let size = if is_dir {
                     get_dir_size(&path)
                 } else {
-                    fs::metadata(&path).map(|m| m.len()).unwrap_or(0)
+                    fs::metadata(&path).map_or(0, |m| m.len())
                 };
                 entries.push(Entry {
                     path,
@@ -107,7 +107,7 @@ impl App {
                 });
             }
         }
-        entries.sort_by(|a, b| b.size.cmp(&a.size));
+        entries.sort_by_key(|e| std::cmp::Reverse(e.size));
         self.entries = entries;
         if !self.entries.is_empty() {
             self.list_state.select(Some(0));

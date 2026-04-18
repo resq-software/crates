@@ -35,10 +35,29 @@ allow = [
     "Unicode-DFS-2016",
     "Zlib",
     "OpenSSL",
+    # CDDL-1.0: OSI-approved weak copyleft (file-level like MPL). Appears
+    # transitively via `inferno` (profiling stack, used by resq-flame).
+    # Compatible with our Apache-2.0 distribution because the CDDL
+    # obligation is file-level and we consume unmodified.
+    "CDDL-1.0",
+    # CDLA-Permissive-2.0: community data license used by
+    # `webpki-root-certs` for the bundled root certificate database.
+    # Effectively a data (not code) license; no copyleft implications.
+    "CDLA-Permissive-2.0",
 ]
 # deny list removed: cargo-deny v2 derives denials from the absence of a
 # license in `allow`. GPL/AGPL/LGPL/MPL are not in `allow`, so they're
 # implicitly denied.
+
+# Per-crate license exceptions — narrower than widening `allow` org-wide.
+# Each exception documents the specific crate and why its license is
+# acceptable in spite of the default-deny policy.
+exceptions = [
+    # `colored` is MPL-2.0. MPL is weak copyleft at the file level and
+    # commonly accepted in commercial Rust projects. We don't modify
+    # upstream `colored` sources, so the copyleft trigger does not apply.
+    { allow = ["MPL-2.0"], crate = "colored" },
+]
 
 [bans]
 multiple-versions = "warn"
