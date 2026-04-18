@@ -64,6 +64,8 @@ enum Commands {
     Docs(commands::docs::DocsArgs),
     /// Inspect and maintain installed git hooks (doctor, update, status)
     Hooks(commands::hooks::HooksArgs),
+    /// Generate AI-powered commit messages from staged changes
+    Commit(commands::commit::CommitArgs),
 }
 
 #[tokio::main]
@@ -87,6 +89,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Version(args) => commands::version::run(args)?,
         Commands::Docs(args) => commands::docs::run(args)?,
         Commands::Hooks(args) => commands::hooks::run(args)?,
+        Commands::Commit(args) => commands::commit::run(args).await?,
     }
 
     Ok(())

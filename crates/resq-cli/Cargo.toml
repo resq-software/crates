@@ -42,6 +42,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 walkdir = { workspace = true }
 resq-tui = { workspace = true }
+resq-ai = { workspace = true }
 
 # Secret scanner performance
 aho-corasick = "1.1"

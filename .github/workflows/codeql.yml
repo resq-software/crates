@@ -85,4 +85,4 @@ jobs:
           ARCH=$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/')
           curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/${TAG}/gitleaks_${VERSION}_${OS}_${ARCH}.tar.gz" \
             | tar -xz gitleaks
-          ./gitleaks detect --source . --redact -v
+          ./gitleaks detect --source . --redact -v --config .gitleaks.toml

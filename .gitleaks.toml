@@ -1,0 +1,8 @@
+# Gitleaks configuration — allowlist test fixtures that contain placeholder
+# API key strings (not real secrets).
+
+[allowlist]
+  description = "Allow test placeholder values in Rust test modules"
+  paths = [
+    '''crates/resq-ai/src/config\.rs''',
+  ]

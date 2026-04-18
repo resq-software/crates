@@ -19,6 +19,7 @@
 //! # Commands
 //!
 //! - [`audit`] - Dependency + supply-chain audit
+//! - [`commit`] - AI-powered commit message generation
 //! - [`copyright`] - Check/update copyright headers
 //! - [`dev`] - Repo development utilities
 //! - [`docs`] - Documentation export + publication
@@ -30,6 +31,8 @@
 
 /// Blockchain event auditing.
 pub mod audit;
+/// AI-powered commit message generation.
+pub mod commit;
 /// Copyright header management.
 pub mod copyright;
 /// Development server management.

@@ -6,4 +6,9 @@
 # See https://github.com/resq-software/dev for the full installer.
 set -eu
 export REPO=crates
-exec sh -c "$(curl -fsSL https://raw.githubusercontent.com/resq-software/dev/main/install.sh)"
+INSTALLER="$(curl -fsSL https://raw.githubusercontent.com/resq-software/dev/main/install.sh)" || {
+  echo "bootstrap: failed to download installer" >&2
+  exit 1
+}
+[ -n "$INSTALLER" ] || { echo "bootstrap: empty installer payload" >&2; exit 1; }
+exec sh -c "$INSTALLER" -- "$@"
