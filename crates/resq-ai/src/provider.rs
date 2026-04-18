@@ -65,6 +65,9 @@ impl Provider {
 
 /// Send a completion request to the configured provider.
 ///
+/// A single [`reqwest::Client`] is reused across calls to benefit from
+/// connection pooling.
+///
 /// # Errors
 ///
 /// Returns an error on network failure, auth failure, or empty response.
@@ -73,9 +76,10 @@ pub async fn complete(
     system: &str,
     user: &str,
 ) -> anyhow::Result<String> {
+    let client = reqwest::Client::new();
     match config.provider {
-        Provider::Anthropic => crate::anthropic::complete(config, system, user).await,
-        Provider::OpenAi => crate::openai::complete(config, system, user).await,
-        Provider::Gemini => crate::gemini::complete(config, system, user).await,
+        Provider::Anthropic => crate::anthropic::complete(&client, config, system, user).await,
+        Provider::OpenAi => crate::openai::complete(&client, config, system, user).await,
+        Provider::Gemini => crate::gemini::complete(&client, config, system, user).await,
     }
 }

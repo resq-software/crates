@@ -24,7 +24,7 @@ use crate::AiConfig;
 #[derive(Serialize)]
 struct ChatRequest<'a> {
     model: &'a str,
-    max_tokens: u32,
+    max_completion_tokens: u32,
     messages: Vec<ChatMessage<'a>>,
 }
 
@@ -50,7 +50,12 @@ struct ResponseMessage {
 }
 
 /// Send a completion request to an OpenAI-compatible endpoint.
-pub(crate) async fn complete(config: &AiConfig, system: &str, user: &str) -> Result<String> {
+pub(crate) async fn complete(
+    client: &reqwest::Client,
+    config: &AiConfig,
+    system: &str,
+    user: &str,
+) -> Result<String> {
     let base = config
         .base_url
         .as_deref()
@@ -59,7 +64,7 @@ pub(crate) async fn complete(config: &AiConfig, system: &str, user: &str) -> Res
 
     let body = ChatRequest {
         model: &config.model,
-        max_tokens: config.max_tokens,
+        max_completion_tokens: config.max_tokens,
         messages: vec![
             ChatMessage {
                 role: "system",
@@ -72,7 +77,6 @@ pub(crate) async fn complete(config: &AiConfig, system: &str, user: &str) -> Res
         ],
     };
 
-    let client = reqwest::Client::new();
     let resp = client
         .post(&url)
         .bearer_auth(config.api_key())

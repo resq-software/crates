@@ -47,7 +47,12 @@ struct ContentBlock {
 }
 
 /// Send a completion request to the Anthropic Messages API.
-pub(crate) async fn complete(config: &AiConfig, system: &str, user: &str) -> Result<String> {
+pub(crate) async fn complete(
+    client: &reqwest::Client,
+    config: &AiConfig,
+    system: &str,
+    user: &str,
+) -> Result<String> {
     let base = config
         .base_url
         .as_deref()
@@ -64,7 +69,6 @@ pub(crate) async fn complete(config: &AiConfig, system: &str, user: &str) -> Res
         }],
     };
 
-    let client = reqwest::Client::new();
     let resp = client
         .post(&url)
         .header("x-api-key", config.api_key())

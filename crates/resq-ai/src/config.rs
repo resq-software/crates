@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-//! Config cascade: env vars -> ~/.resq/ai.toml -> <project>/.resq/ai.toml
+//! Config cascade: env vars -> `<project>/.resq/ai.toml` -> `~/.resq/ai.toml`
+//!
+//! Most-specific wins: project-local config overrides home config.
 
 use crate::provider::Provider;
 use anyhow::{bail, Context, Result};
@@ -163,9 +165,24 @@ fn project_config_path() -> Option<PathBuf> {
 }
 
 fn load_toml_config(path: Option<PathBuf>) -> FileConfig {
-    path.and_then(|p| fs::read_to_string(p).ok())
-        .and_then(|s| toml::from_str(&s).ok())
-        .unwrap_or_default()
+    let Some(p) = path else {
+        return FileConfig::default();
+    };
+    let content = match fs::read_to_string(&p) {
+        Ok(c) => c,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return FileConfig::default(),
+        Err(e) => {
+            eprintln!("Warning: could not read {}: {e}", p.display());
+            return FileConfig::default();
+        }
+    };
+    match toml::from_str(&content) {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            eprintln!("Warning: invalid TOML in {}: {e}", p.display());
+            FileConfig::default()
+        }
+    }
 }
 
 #[cfg(test)]
