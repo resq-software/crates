@@ -126,7 +126,7 @@ enum Commands {
 
 /// Args for the `resq scan` group.
 #[derive(Args, Debug)]
-pub struct ScanArgs {
+struct ScanArgs {
     #[command(subcommand)]
     kind: ScanKind,
 }
@@ -143,7 +143,7 @@ enum ScanKind {
 
 /// Args for the `resq tui` group.
 #[derive(Args, Debug)]
-pub struct TuiArgs {
+struct TuiArgs {
     #[command(subcommand)]
     screen: TuiScreen,
 }
@@ -162,6 +162,13 @@ enum TuiScreen {
     Clean(commands::explore::CleanArgs),
     /// Asm-Explorer — machine-code analysis of build artifacts
     Asm(commands::explore::AsmArgs),
+}
+
+/// Emit a one-line deprecation notice to stderr when a legacy flat subcommand
+/// is invoked. Non-fatal: the command still runs. Goes through `tracing::warn!`
+/// so `--quiet` suppresses it and `NO_COLOR` / TTY-aware ANSI handling apply.
+fn warn_deprecated(old: &str, new: &str) {
+    tracing::warn!("`resq {old}` is deprecated; use `resq {new}` instead.");
 }
 
 /// Initialize tracing based on `--verbose` / `--quiet` / `--no-color` flags.
@@ -230,15 +237,44 @@ async fn main() -> anyhow::Result<()> {
         Commands::Completions(args) => commands::completions::run(args, Cli::command())?,
 
         // ── Legacy flat aliases (hidden but still routed) ───────────────────
-        Commands::Copyright(args) => commands::copyright::run(&args)?,
-        Commands::Audit(args) => commands::audit::run(args).await?,
-        Commands::Secrets(args) => commands::secrets::run(args).await?,
-        Commands::Explore(args) => commands::explore::run_explore(args).await?,
-        Commands::Logs(args) => commands::explore::run_logs(args).await?,
-        Commands::Health(args) => commands::explore::run_health(args).await?,
-        Commands::Deploy(args) => commands::explore::run_deploy(args).await?,
-        Commands::Clean(args) => commands::explore::run_clean(args).await?,
-        Commands::Asm(args) => commands::explore::run_asm(args).await?,
+        // Each emits a deprecation warning through `tracing::warn!` before
+        // dispatching, so users know to migrate to the grouped form.
+        Commands::Copyright(args) => {
+            warn_deprecated("copyright", "scan copyright");
+            commands::copyright::run(&args)?;
+        }
+        Commands::Audit(args) => {
+            warn_deprecated("audit", "scan audit");
+            commands::audit::run(args).await?;
+        }
+        Commands::Secrets(args) => {
+            warn_deprecated("secrets", "scan secrets");
+            commands::secrets::run(args).await?;
+        }
+        Commands::Explore(args) => {
+            warn_deprecated("explore", "tui explore");
+            commands::explore::run_explore(args).await?;
+        }
+        Commands::Logs(args) => {
+            warn_deprecated("logs", "tui logs");
+            commands::explore::run_logs(args).await?;
+        }
+        Commands::Health(args) => {
+            warn_deprecated("health", "tui health");
+            commands::explore::run_health(args).await?;
+        }
+        Commands::Deploy(args) => {
+            warn_deprecated("deploy", "tui deploy");
+            commands::explore::run_deploy(args).await?;
+        }
+        Commands::Clean(args) => {
+            warn_deprecated("clean", "tui clean");
+            commands::explore::run_clean(args).await?;
+        }
+        Commands::Asm(args) => {
+            warn_deprecated("asm", "tui asm");
+            commands::explore::run_asm(args).await?;
+        }
     }
 
     Ok(())
