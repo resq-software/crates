@@ -33,6 +33,8 @@
 pub mod audit;
 /// AI-powered commit message generation.
 pub mod commit;
+/// Shell-completion emitter (`resq completions <shell>`).
+pub mod completions;
 /// Copyright header management.
 pub mod copyright;
 /// Development server management.

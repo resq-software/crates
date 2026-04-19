@@ -21,8 +21,8 @@
 #![deny(missing_docs)]
 
 use clap::{CommandFactory, Parser, Subcommand};
-use clap_complete::{generate, Shell};
 use resq_cli::commands;
+use std::io::IsTerminal;
 use tracing_subscriber::EnvFilter;
 
 const LONG_ABOUT: &str = "\
@@ -43,16 +43,22 @@ to install shell tab-completion.";
 #[command(name = "resq")]
 #[command(version, about = "ResQ CLI tools", long_about = LONG_ABOUT)]
 pub struct Cli {
-    /// Increase log verbosity (`-v` info, `-vv` debug, `-vvv` trace). Overridden by `--quiet`.
-    #[arg(short, long, action = clap::ArgAction::Count, global = true)]
+    /// Increase structured-log verbosity (`--verbose` info, `-vv` debug, `-vvv` trace).
+    /// Affects `tracing` output only — subcommand `-v` flags are unchanged. Overridden by
+    /// `--quiet`. `RUST_LOG`, if set, wins over both.
+    #[arg(long, action = clap::ArgAction::Count, global = true)]
     verbose: u8,
 
-    /// Suppress non-error output. Wins over `--verbose`.
+    /// Suppress non-error `tracing` output (sets the log level to `error`).
+    /// Does not silence subcommands that write to stdout/stderr directly.
     #[arg(short, long, global = true)]
     quiet: bool,
 
-    /// Disable colored output in this process. Set `NO_COLOR=1` to propagate to
-    /// child tools (cargo, bun, uv, …).
+    /// Disable ANSI colors in `tracing` output. `clap` help and subcommands that write
+    /// directly to stdout/stderr are unaffected by this flag; export `NO_COLOR=1`
+    /// before invocation for fully-uncolored output (also propagates to child tools).
+    /// Color auto-detection is on by default: when stderr is not a TTY, ANSI is
+    /// suppressed even without this flag.
     #[arg(long, global = true)]
     no_color: bool,
 
@@ -95,17 +101,19 @@ enum Commands {
     /// Generate AI-powered commit messages from staged changes
     Commit(commands::commit::CommitArgs),
     /// Emit shell completions to stdout (bash, zsh, fish, elvish, powershell)
-    Completions {
-        /// Target shell for completion script.
-        shell: Shell,
-    },
+    Completions(commands::completions::CompletionsArgs),
 }
 
-/// Initialize tracing based on `-v` / `-q` / `--no-color` flags.
+/// Initialize tracing based on `--verbose` / `--quiet` / `--no-color` flags.
 ///
-/// Default is `warn`; `-v` bumps to `info`, `-vv` to `debug`, `-vvv`+ to `trace`.
-/// `--quiet` forces `error` regardless of verbose count. If `RUST_LOG` is set
-/// in the environment it takes precedence over the computed level.
+/// Writes to **stderr** so that structured logs never pollute subcommand stdout
+/// (e.g. `resq completions bash > file` must produce a clean file). Default level
+/// is `warn`; `--verbose` bumps to `info`, `-vv` to `debug`, `-vvv`+ to `trace`;
+/// `--quiet` forces `error`. If `RUST_LOG` is set in the environment it takes
+/// precedence over the computed level.
+///
+/// ANSI colors auto-detect from stderr's TTY status; `--no-color` forces them
+/// off explicitly.
 fn init_tracing(verbose: u8, quiet: bool, no_color: bool) {
     let level = if quiet {
         "error"
@@ -119,17 +127,14 @@ fn init_tracing(verbose: u8, quiet: bool, no_color: bool) {
     };
 
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
+    let use_ansi = !no_color && std::io::stderr().is_terminal();
 
-    let builder = tracing_subscriber::fmt()
+    tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
         .with_env_filter(filter)
-        .with_target(false);
-
-    if no_color {
-        builder.with_ansi(false).init();
-    } else {
-        builder.init();
-    }
+        .with_ansi(use_ansi)
+        .with_target(false)
+        .init();
 }
 
 #[tokio::main]
@@ -155,11 +160,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Docs(args) => commands::docs::run(args)?,
         Commands::Hooks(args) => commands::hooks::run(args)?,
         Commands::Commit(args) => commands::commit::run(args).await?,
-        Commands::Completions { shell } => {
-            let mut cmd = Cli::command();
-            let bin = cmd.get_name().to_string();
-            generate(shell, &mut cmd, bin, &mut std::io::stdout());
-        }
+        Commands::Completions(args) => commands::completions::run(args, Cli::command())?,
     }
 
     Ok(())
