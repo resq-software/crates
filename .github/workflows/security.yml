@@ -21,8 +21,8 @@ permissions:
 
 jobs:
   scan:
-    uses: resq-software/.github/.github/workflows/security-scan.yml@main
+    uses: resq-software/.github/.github/workflows/security-scan.yml@bd95037a0adee215496a0c42eb825200bcfebbf8 # main
     with:
       languages: '["actions"]'
       enable-semgrep: true
-    secrets: inherit
+    secrets: inherit # zizmor: ignore[secrets-inherit] — org-internal reusable workflow

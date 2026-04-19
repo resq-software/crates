@@ -31,7 +31,7 @@ jobs:
       run-test: true
       run-deny: true
       run-coverage: true
-    secrets: inherit
+    secrets: inherit # zizmor: ignore[secrets-inherit] — org-internal reusable workflow
 
   required:
     name: required

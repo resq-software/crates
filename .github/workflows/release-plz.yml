@@ -24,7 +24,10 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: dtolnay/rust-toolchain@stable
+          # persist-credentials left enabled — release-plz needs git push for tags
+      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # master
+        with:
+          toolchain: stable
       - id: release-plz
         uses: MarcoIeni/release-plz-action@1528104d2ca23787631a1c1f022abb64b34c1e11 # v0.5.128
         env:

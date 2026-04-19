@@ -15,6 +15,7 @@
 name: PR Size Labeler
 
 on:
+  # zizmor: ignore[dangerous-triggers] — no checkout of PR code; action uses API only
   pull_request_target:
     types: [opened, synchronize]
 

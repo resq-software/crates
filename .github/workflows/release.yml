@@ -16,8 +16,7 @@ on:
         description: 'Existing tag to build (e.g. resq-cli-v0.3.0)'
         required: true
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   build:
@@ -50,9 +49,10 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
+          persist-credentials: false
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # master
         with:
           targets: ${{ matrix.target }}
 
@@ -62,25 +62,33 @@ jobs:
 
       - name: Build
         shell: bash
+        env:
+          USE_CROSS: ${{ matrix.cross }}
+          BUILD_TARGET: ${{ matrix.target }}
         run: |
-          if [ "${{ matrix.cross }}" = "true" ]; then
-            cross build --release -p resq-cli --target ${{ matrix.target }}
+          if [ "$USE_CROSS" = "true" ]; then
+            cross build --release -p resq-cli --target "$BUILD_TARGET"
           else
-            cargo build --release -p resq-cli --target ${{ matrix.target }}
+            cargo build --release -p resq-cli --target "$BUILD_TARGET"
           fi
 
       - name: Package
         id: pkg
         shell: bash
+        env:
+          RUNNER_OS: ${{ runner.os }}
+          ARCHIVE_FMT: ${{ matrix.archive }}
+          BUILD_TARGET: ${{ matrix.target }}
+          TAG_NAME: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
           bin="resq"
           ext=""
-          if [ "${{ runner.os }}" = "Windows" ]; then ext=".exe"; fi
-          staging="resq-cli-${{ github.event.inputs.tag || github.ref_name }}-${{ matrix.target }}"
+          if [ "$RUNNER_OS" = "Windows" ]; then ext=".exe"; fi
+          staging="resq-cli-${TAG_NAME}-${BUILD_TARGET}"
           mkdir -p "$staging"
-          cp "target/${{ matrix.target }}/release/${bin}${ext}" "$staging/"
+          cp "target/${BUILD_TARGET}/release/${bin}${ext}" "$staging/"
           cp README.md LICENSE* "$staging/" 2>/dev/null || true
-          if [ "${{ matrix.archive }}" = "zip" ]; then
+          if [ "$ARCHIVE_FMT" = "zip" ]; then
             7z a "${staging}.zip" "$staging"
             echo "asset=${staging}.zip" >> "$GITHUB_OUTPUT"
           else
