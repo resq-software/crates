@@ -120,11 +120,16 @@ fn init_tracing(verbose: u8, quiet: bool, no_color: bool) {
 
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
 
-    tracing_subscriber::fmt()
+    let builder = tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
         .with_env_filter(filter)
-        .with_ansi(!no_color)
-        .with_target(false)
-        .init();
+        .with_target(false);
+
+    if no_color {
+        builder.with_ansi(false).init();
+    } else {
+        builder.init();
+    }
 }
 
 #[tokio::main]
