@@ -20,23 +20,25 @@
 
 #![deny(missing_docs)]
 
-use clap::{CommandFactory, Parser, Subcommand};
+use clap::{Args, CommandFactory, Parser, Subcommand};
 use resq_cli::commands;
 use std::io::IsTerminal;
 use tracing_subscriber::EnvFilter;
 
 const LONG_ABOUT: &str = "\
-ResQ developer CLI — audits, formatting, secrets scanning, git hooks, and six TUI explorers.
+ResQ developer CLI — audits, formatting, git hooks, and six TUI explorers.
 
 Common commands:
-  resq audit           Run cargo/bun/uv audit across the workspace
-  resq secrets         Scan the repo for leaked secrets and credentials
+  resq scan audit      Run cargo/bun/uv audit across the workspace
+  resq scan secrets    Scan the repo for leaked secrets and credentials
   resq format          Format Rust / TS / Python / C++ / C# in one pass
   resq pre-commit      Run the full pre-commit gate (copyright, secrets, audit, format)
   resq hooks           Inspect and maintain installed git hooks
+  resq tui <screen>    Launch a TUI explorer (explore, logs, health, deploy, clean, asm)
 
-Run `resq <command> --help` for per-command options, or `resq completions <shell>`
-to install shell tab-completion.";
+The old flat forms (`resq audit`, `resq explore`, …) still work as hidden aliases
+for one release cycle. Run `resq <command> --help` for per-command options, or
+`resq completions <shell>` to install shell tab-completion.";
 
 /// Command-line arguments for the `ResQ` CLI.
 #[derive(Parser)]
@@ -68,28 +70,17 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Manage copyright headers
-    Copyright(commands::copyright::CopyrightArgs),
-    /// Run audit in workspaces
-    Audit(commands::audit::AuditArgs),
-    /// Scan for secrets and credentials
-    Secrets(commands::secrets::SecretsArgs),
+    // ── Grouped commands (new, visible) ──────────────────────────────────────
+    /// Scan the workspace (audit | secrets | copyright)
+    Scan(ScanArgs),
+    /// Launch a TUI explorer (explore | logs | health | deploy | clean | asm)
+    Tui(TuiArgs),
+
+    // ── Kept-flat commands ───────────────────────────────────────────────────
     /// Format source files (Rust / TS / Python / C++ / C#)
     Format(commands::format::FormatArgs),
     /// Repository and development utilities
     Dev(commands::dev::DevArgs),
-    /// Launch Perf-Explorer (TUI)
-    Explore(commands::explore::ExploreArgs),
-    /// Launch Log-Explorer (TUI)
-    Logs(commands::explore::LogsArgs),
-    /// Launch Health-Explorer (TUI)
-    Health(commands::explore::HealthArgs),
-    /// Launch Deploy-Explorer (TUI)
-    Deploy(commands::explore::DeployArgs),
-    /// Launch Cleanup-Explorer (TUI)
-    Clean(commands::explore::CleanArgs),
-    /// Launch Asm-Explorer for machine code analysis
-    Asm(commands::explore::AsmArgs),
     /// Run pre-commit checks (copyright, secrets, audit, formatting)
     PreCommit(commands::pre_commit::PreCommitArgs),
     /// Manage versions and changesets across the monorepo
@@ -102,6 +93,82 @@ enum Commands {
     Commit(commands::commit::CommitArgs),
     /// Emit shell completions to stdout (bash, zsh, fish, elvish, powershell)
     Completions(commands::completions::CompletionsArgs),
+
+    // ── Legacy flat aliases (hidden; still callable for backwards compat) ────
+    /// Deprecated: use `resq scan copyright`
+    #[command(hide = true)]
+    Copyright(commands::copyright::CopyrightArgs),
+    /// Deprecated: use `resq scan audit`
+    #[command(hide = true)]
+    Audit(commands::audit::AuditArgs),
+    /// Deprecated: use `resq scan secrets`
+    #[command(hide = true)]
+    Secrets(commands::secrets::SecretsArgs),
+    /// Deprecated: use `resq tui explore`
+    #[command(hide = true)]
+    Explore(commands::explore::ExploreArgs),
+    /// Deprecated: use `resq tui logs`
+    #[command(hide = true)]
+    Logs(commands::explore::LogsArgs),
+    /// Deprecated: use `resq tui health`
+    #[command(hide = true)]
+    Health(commands::explore::HealthArgs),
+    /// Deprecated: use `resq tui deploy`
+    #[command(hide = true)]
+    Deploy(commands::explore::DeployArgs),
+    /// Deprecated: use `resq tui clean`
+    #[command(hide = true)]
+    Clean(commands::explore::CleanArgs),
+    /// Deprecated: use `resq tui asm`
+    #[command(hide = true)]
+    Asm(commands::explore::AsmArgs),
+}
+
+/// Args for the `resq scan` group.
+#[derive(Args, Debug)]
+struct ScanArgs {
+    #[command(subcommand)]
+    kind: ScanKind,
+}
+
+#[derive(Subcommand, Debug)]
+enum ScanKind {
+    /// Run audit in workspaces (cargo audit / bun audit / uv pip-audit)
+    Audit(commands::audit::AuditArgs),
+    /// Scan for secrets and credentials
+    Secrets(commands::secrets::SecretsArgs),
+    /// Manage copyright headers
+    Copyright(commands::copyright::CopyrightArgs),
+}
+
+/// Args for the `resq tui` group.
+#[derive(Args, Debug)]
+struct TuiArgs {
+    #[command(subcommand)]
+    screen: TuiScreen,
+}
+
+#[derive(Subcommand, Debug)]
+enum TuiScreen {
+    /// Perf-Explorer — live performance metrics
+    Explore(commands::explore::ExploreArgs),
+    /// Log-Explorer — tail + filter service logs
+    Logs(commands::explore::LogsArgs),
+    /// Health-Explorer — cluster & service health
+    Health(commands::explore::HealthArgs),
+    /// Deploy-Explorer — deploy/rollback workflows
+    Deploy(commands::explore::DeployArgs),
+    /// Cleanup-Explorer — stale branches, artifacts, state
+    Clean(commands::explore::CleanArgs),
+    /// Asm-Explorer — machine-code analysis of build artifacts
+    Asm(commands::explore::AsmArgs),
+}
+
+/// Emit a one-line deprecation notice to stderr when a legacy flat subcommand
+/// is invoked. Non-fatal: the command still runs. Goes through `tracing::warn!`
+/// so `--quiet` suppresses it and `NO_COLOR` / TTY-aware ANSI handling apply.
+fn warn_deprecated(old: &str, new: &str) {
+    tracing::warn!("`resq {old}` is deprecated; use `resq {new}` instead.");
 }
 
 /// Initialize tracing based on `--verbose` / `--quiet` / `--no-color` flags.
@@ -144,23 +211,70 @@ async fn main() -> anyhow::Result<()> {
     init_tracing(cli.verbose, cli.quiet, cli.no_color);
 
     match cli.command {
-        Commands::Copyright(args) => commands::copyright::run(&args)?,
-        Commands::Audit(args) => commands::audit::run(args).await?,
-        Commands::Secrets(args) => commands::secrets::run(args).await?,
+        // ── Grouped commands ────────────────────────────────────────────────
+        Commands::Scan(ScanArgs { kind }) => match kind {
+            ScanKind::Audit(args) => commands::audit::run(args).await?,
+            ScanKind::Secrets(args) => commands::secrets::run(args).await?,
+            ScanKind::Copyright(args) => commands::copyright::run(&args)?,
+        },
+        Commands::Tui(TuiArgs { screen }) => match screen {
+            TuiScreen::Explore(args) => commands::explore::run_explore(args).await?,
+            TuiScreen::Logs(args) => commands::explore::run_logs(args).await?,
+            TuiScreen::Health(args) => commands::explore::run_health(args).await?,
+            TuiScreen::Deploy(args) => commands::explore::run_deploy(args).await?,
+            TuiScreen::Clean(args) => commands::explore::run_clean(args).await?,
+            TuiScreen::Asm(args) => commands::explore::run_asm(args).await?,
+        },
+
+        // ── Kept-flat commands ──────────────────────────────────────────────
         Commands::Format(args) => commands::format::run(args).await?,
         Commands::Dev(args) => commands::dev::run(args)?,
-        Commands::Explore(args) => commands::explore::run_explore(args).await?,
-        Commands::Logs(args) => commands::explore::run_logs(args).await?,
-        Commands::Health(args) => commands::explore::run_health(args).await?,
-        Commands::Deploy(args) => commands::explore::run_deploy(args).await?,
-        Commands::Clean(args) => commands::explore::run_clean(args).await?,
-        Commands::Asm(args) => commands::explore::run_asm(args).await?,
         Commands::PreCommit(args) => commands::pre_commit::run(args).await?,
         Commands::Version(args) => commands::version::run(args)?,
         Commands::Docs(args) => commands::docs::run(args)?,
         Commands::Hooks(args) => commands::hooks::run(args)?,
         Commands::Commit(args) => commands::commit::run(args).await?,
         Commands::Completions(args) => commands::completions::run(args, Cli::command())?,
+
+        // ── Legacy flat aliases (hidden but still routed) ───────────────────
+        // Each emits a deprecation warning through `tracing::warn!` before
+        // dispatching, so users know to migrate to the grouped form.
+        Commands::Copyright(args) => {
+            warn_deprecated("copyright", "scan copyright");
+            commands::copyright::run(&args)?;
+        }
+        Commands::Audit(args) => {
+            warn_deprecated("audit", "scan audit");
+            commands::audit::run(args).await?;
+        }
+        Commands::Secrets(args) => {
+            warn_deprecated("secrets", "scan secrets");
+            commands::secrets::run(args).await?;
+        }
+        Commands::Explore(args) => {
+            warn_deprecated("explore", "tui explore");
+            commands::explore::run_explore(args).await?;
+        }
+        Commands::Logs(args) => {
+            warn_deprecated("logs", "tui logs");
+            commands::explore::run_logs(args).await?;
+        }
+        Commands::Health(args) => {
+            warn_deprecated("health", "tui health");
+            commands::explore::run_health(args).await?;
+        }
+        Commands::Deploy(args) => {
+            warn_deprecated("deploy", "tui deploy");
+            commands::explore::run_deploy(args).await?;
+        }
+        Commands::Clean(args) => {
+            warn_deprecated("clean", "tui clean");
+            commands::explore::run_clean(args).await?;
+        }
+        Commands::Asm(args) => {
+            warn_deprecated("asm", "tui asm");
+            commands::explore::run_asm(args).await?;
+        }
     }
 
     Ok(())

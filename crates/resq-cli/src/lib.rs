@@ -23,23 +23,30 @@
 //!
 //! # Commands
 //!
-//! - `audit` — run cargo/bun/uv audit across the workspace
-//! - `secrets` — scan for leaked credentials
+//! Grouped:
+//! - `scan audit` — run cargo/bun/uv audit across the workspace
+//! - `scan secrets` — scan for leaked credentials
+//! - `scan copyright` — check or apply license headers
+//! - `tui explore` / `logs` / `health` / `deploy` / `clean` / `asm` — TUI explorers
+//!
+//! Top-level:
 //! - `format` — format Rust / TS / Python / C++ / C# in one pass
-//! - `copyright` — check or apply license headers
 //! - `pre-commit` — full pre-commit gate (copyright, secrets, audit, format)
 //! - `hooks` — inspect / update installed git hooks
 //! - `dev` — repository utilities (workspace ops)
 //! - `version` / `docs` / `commit` — release + docs + AI commit messages
-//! - `explore` / `logs` / `health` / `deploy` / `clean` / `asm` — TUI explorers
 //! - `completions` — emit shell completions for bash/zsh/fish/elvish/powershell
+//!
+//! Legacy flat forms (`resq audit`, `resq explore`, etc.) remain as hidden
+//! aliases for one release cycle.
 //!
 //! # Usage
 //!
 //! ```bash
-//! resq audit
+//! resq scan audit
 //! resq format --check
 //! resq pre-commit
+//! resq tui health
 //! resq completions bash > /usr/local/share/bash-completion/completions/resq
 //! ```
 
