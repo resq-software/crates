@@ -20,14 +20,48 @@
 
 #![deny(missing_docs)]
 
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 use resq_cli::commands;
+use std::io::IsTerminal;
+use tracing_subscriber::EnvFilter;
+
+const LONG_ABOUT: &str = "\
+ResQ developer CLI — audits, formatting, secrets scanning, git hooks, and six TUI explorers.
+
+Common commands:
+  resq audit           Run cargo/bun/uv audit across the workspace
+  resq secrets         Scan the repo for leaked secrets and credentials
+  resq format          Format Rust / TS / Python / C++ / C# in one pass
+  resq pre-commit      Run the full pre-commit gate (copyright, secrets, audit, format)
+  resq hooks           Inspect and maintain installed git hooks
+
+Run `resq <command> --help` for per-command options, or `resq completions <shell>`
+to install shell tab-completion.";
 
 /// Command-line arguments for the `ResQ` CLI.
 #[derive(Parser)]
 #[command(name = "resq")]
-#[command(version, about = "ResQ CLI tools", long_about = None)]
+#[command(version, about = "ResQ CLI tools", long_about = LONG_ABOUT)]
 pub struct Cli {
+    /// Increase structured-log verbosity (`--verbose` info, `-vv` debug, `-vvv` trace).
+    /// Affects `tracing` output only — subcommand `-v` flags are unchanged. Overridden by
+    /// `--quiet`. `RUST_LOG`, if set, wins over both.
+    #[arg(long, action = clap::ArgAction::Count, global = true)]
+    verbose: u8,
+
+    /// Suppress non-error `tracing` output (sets the log level to `error`).
+    /// Does not silence subcommands that write to stdout/stderr directly.
+    #[arg(short, long, global = true)]
+    quiet: bool,
+
+    /// Disable ANSI colors in `tracing` output. `clap` help and subcommands that write
+    /// directly to stdout/stderr are unaffected by this flag; export `NO_COLOR=1`
+    /// before invocation for fully-uncolored output (also propagates to child tools).
+    /// Color auto-detection is on by default: when stderr is not a TTY, ANSI is
+    /// suppressed even without this flag.
+    #[arg(long, global = true)]
+    no_color: bool,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -66,12 +100,48 @@ enum Commands {
     Hooks(commands::hooks::HooksArgs),
     /// Generate AI-powered commit messages from staged changes
     Commit(commands::commit::CommitArgs),
+    /// Emit shell completions to stdout (bash, zsh, fish, elvish, powershell)
+    Completions(commands::completions::CompletionsArgs),
+}
+
+/// Initialize tracing based on `--verbose` / `--quiet` / `--no-color` flags.
+///
+/// Writes to **stderr** so that structured logs never pollute subcommand stdout
+/// (e.g. `resq completions bash > file` must produce a clean file). Default level
+/// is `warn`; `--verbose` bumps to `info`, `-vv` to `debug`, `-vvv`+ to `trace`;
+/// `--quiet` forces `error`. If `RUST_LOG` is set in the environment it takes
+/// precedence over the computed level.
+///
+/// ANSI colors auto-detect from stderr's TTY status; `--no-color` forces them
+/// off explicitly.
+fn init_tracing(verbose: u8, quiet: bool, no_color: bool) {
+    let level = if quiet {
+        "error"
+    } else {
+        match verbose {
+            0 => "warn",
+            1 => "info",
+            2 => "debug",
+            _ => "trace",
+        }
+    };
+
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
+    let use_ansi = !no_color && std::io::stderr().is_terminal();
+
+    tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
+        .with_env_filter(filter)
+        .with_ansi(use_ansi)
+        .with_target(false)
+        .init();
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt::init();
     let cli = Cli::parse();
+
+    init_tracing(cli.verbose, cli.quiet, cli.no_color);
 
     match cli.command {
         Commands::Copyright(args) => commands::copyright::run(&args)?,
@@ -90,6 +160,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Docs(args) => commands::docs::run(args)?,
         Commands::Hooks(args) => commands::hooks::run(args)?,
         Commands::Commit(args) => commands::commit::run(args).await?,
+        Commands::Completions(args) => commands::completions::run(args, Cli::command())?,
     }
 
     Ok(())

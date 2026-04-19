@@ -23,18 +23,24 @@
 //!
 //! # Commands
 //!
-//! - `status` - Check service health
-//! - `deploy` - Deploy services to Kubernetes
-//! - `logs` - View and filter logs
-//! - `secrets` - Manage secrets
-//! - `audit` - Audit blockchain events
+//! - `audit` — run cargo/bun/uv audit across the workspace
+//! - `secrets` — scan for leaked credentials
+//! - `format` — format Rust / TS / Python / C++ / C# in one pass
+//! - `copyright` — check or apply license headers
+//! - `pre-commit` — full pre-commit gate (copyright, secrets, audit, format)
+//! - `hooks` — inspect / update installed git hooks
+//! - `dev` — repository utilities (workspace ops)
+//! - `version` / `docs` / `commit` — release + docs + AI commit messages
+//! - `explore` / `logs` / `health` / `deploy` / `clean` / `asm` — TUI explorers
+//! - `completions` — emit shell completions for bash/zsh/fish/elvish/powershell
 //!
 //! # Usage
 //!
 //! ```bash
-//! resq status
-//! resq deploy --service infrastructure-api
-//! resq logs --service edge-aeai --level debug
+//! resq audit
+//! resq format --check
+//! resq pre-commit
+//! resq completions bash > /usr/local/share/bash-completion/completions/resq
 //! ```
 
 #![deny(missing_docs)]
