@@ -26,7 +26,11 @@ jobs:
   auto-merge:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: github.actor_id == '49699333' # dependabot[bot]
+    # Use the immutable pull_request event payload rather than github.actor /
+    # github.actor_id, which can be subverted on workflow re-runs (zizmor
+    # bot-conditions audit). user.login on the pull_request event is set from
+    # the original PR author at trigger time and cannot be spoofed.
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
     steps:
       - name: Fetch Dependabot metadata
         id: metadata

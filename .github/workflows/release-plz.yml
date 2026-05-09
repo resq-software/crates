@@ -23,8 +23,11 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-          # persist-credentials left enabled — release-plz needs git push for tags
+          # Do NOT persist credentials in .git/config — release-plz-action
+          # reads GITHUB_TOKEN from the env block below for git push and API
+          # calls, so persisting credentials only widens the leak surface
+          # (zizmor artipacked audit).
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # master
         with:
           toolchain: stable
