@@ -101,6 +101,41 @@ jobs:
               )
               return m.group(1) if m else ""
 
+          ref_name = os.environ.get("DOCS_REF_NAME", "main")
+          repo = os.environ.get("GITHUB_REPOSITORY", "")
+
+          # Markdown link rewriter: turn relative paths into absolute
+          # GitHub blob URLs anchored at the crate's source path so
+          # `../../LICENSE` (etc.) keeps working when the README is
+          # embedded into the docs site. Skips links that are
+          # already absolute (http(s)://, mailto:), in-page anchors
+          # (#...), or images (data:).
+          link_re = re.compile(r"(\!?)\[([^\]]*)\]\(([^)]+)\)")
+
+          def rewrite_relative_links(body: str, crate_dir: pathlib.Path) -> str:
+              # crate_dir is e.g. `crates/resq-cli`; build the GitHub
+              # blob prefix once per crate.
+              base_url = f"https://github.com/{repo}/blob/{ref_name}"
+
+              def repl(m: re.Match) -> str:
+                  bang, label, target = m.group(1), m.group(2), m.group(3).strip()
+                  # Drop optional title: `(path "title")` -> path
+                  url_part = target.split(None, 1)[0]
+                  if re.match(r"^(https?:|mailto:|#|data:)", url_part):
+                      return m.group(0)
+                  # Resolve target against the crate dir, then make
+                  # it relative to the repo root for the URL path.
+                  try:
+                      resolved = (crate_dir / url_part).resolve().relative_to(
+                          pathlib.Path.cwd().resolve()
+                      )
+                  except (ValueError, OSError):
+                      return m.group(0)
+                  new_url = f"{base_url}/{resolved.as_posix()}"
+                  return f"{bang}[{label}]({new_url})"
+
+              return link_re.sub(repl, body)
+
           ws_text = pathlib.Path("Cargo.toml").read_text(encoding="utf-8")
           ws_pkg = section(ws_text, "workspace.package")
           ws_version = field_in(ws_pkg, "version") or "unknown"
@@ -150,11 +185,15 @@ jobs:
               # Embed the crate's README.md if present. Strip the
               # leading HTML comment (Apache-2.0 license header) and
               # the first H1 because the page already has both above.
+              # Relative links (`../LICENSE`, `./design.md`) won't
+              # resolve in the docs site, so rewrite them to absolute
+              # GitHub URLs anchored at the crate's source path.
               readme = crate_dir / "README.md"
               if readme.is_file():
                   body = readme.read_text(encoding="utf-8")
                   body = re.sub(r"^\s*<!--.*?-->\s*", "", body, count=1, flags=re.S)
                   body = re.sub(r"^#\s+[^\n]+\n+", "", body, count=1)
+                  body = rewrite_relative_links(body, crate_dir)
                   parts.extend(["## Overview", "", body.rstrip(), ""])
               else:
                   parts.extend([
