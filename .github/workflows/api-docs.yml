@@ -1,0 +1,385 @@
+name: API docs (Rust)
+
+# Auto-generates per-crate package pages from this Cargo workspace
+# and opens a PR against resq-software/docs. Each crate gets a small
+# stub page (metadata + README + link to docs.rs) rather than a full
+# rustdoc dump, because the Rust ecosystem treats docs.rs as the
+# canonical home for API reference and duplicating it would split
+# source-of-truth.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Tag or branch to document
+        required: false
+        type: string
+  push:
+    tags:
+      - 'v*'
+      - '*-v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  # Tag pushes can trigger workflow_dispatch in flight; cancel in
+  # progress so the docs PR always reflects the most recent ref.
+  group: api-docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      OUTPUT_DIR: generated-docs
+      DOCS_TARGET: sdks/rust/api
+
+    steps:
+      - name: Resolve ref metadata
+        # Single source of truth for the ref this run documents.
+        # workflow_dispatch can pass an alternate ref via inputs.ref;
+        # fall back to github.ref_name (already stripped of refs/...).
+        run: |
+          raw='${{ inputs.ref || github.ref_name }}'
+          raw="${raw#refs/tags/}"
+          raw="${raw#refs/heads/}"
+          slug="${raw//\//-}"
+          slug="${slug//\@/-}"
+          {
+            echo "DOCS_REF_NAME=$raw"
+            echo "DOCS_REF_SLUG=$slug"
+          } >> "$GITHUB_ENV"
+
+      - name: Checkout source repo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+
+      - name: Generate per-crate stub pages
+        # For each crate in `crates/*`, emit one Markdown page with:
+        #   - the crate name + version + description
+        #   - a link to docs.rs (canonical Rust API reference)
+        #   - the crate's README.md content (the human-facing docs)
+        # The actual rustdoc API is intentionally NOT duplicated here;
+        # docs.rs is the source of truth and links from these pages
+        # take users there.
+        run: |
+          mkdir -p "$OUTPUT_DIR"
+          rm -rf "${OUTPUT_DIR:?}"/*
+          python3 - <<'PY'
+          import os
+          import pathlib
+          import re
+
+          out_root = pathlib.Path(os.environ["OUTPUT_DIR"])
+          out_root.mkdir(parents=True, exist_ok=True)
+
+          # Workspace fallbacks for fields a crate may inherit via
+          # `<field>.workspace = true`. Section-scoped extraction (only
+          # read keys inside [workspace.package]) avoids matching
+          # `version` lines inside other tables further down the file.
+          def section(text: str, header: str) -> str:
+              # Match from the [section] header to the next [...]
+              # header (or end of file). Anchored to start-of-line so
+              # `[dependencies.foo]` doesn't match `[foo]`.
+              m = re.search(
+                  rf"^\[{re.escape(header)}\]\s*\n(.*?)(?=^\[|\Z)",
+                  text,
+                  re.S | re.M,
+              )
+              return m.group(1) if m else ""
+
+          def field_in(section_text: str, name: str) -> str:
+              m = re.search(
+                  rf'^\s*{re.escape(name)}\s*=\s*"([^"]+)"',
+                  section_text,
+                  re.M,
+              )
+              return m.group(1) if m else ""
+
+          ws_text = pathlib.Path("Cargo.toml").read_text(encoding="utf-8")
+          ws_pkg = section(ws_text, "workspace.package")
+          ws_version = field_in(ws_pkg, "version") or "unknown"
+          ws_license = field_in(ws_pkg, "license") or "Apache-2.0"
+
+          def parse_crate_meta(cargo_toml: pathlib.Path) -> dict:
+              text = cargo_toml.read_text(encoding="utf-8")
+              pkg = section(text, "package")
+              return {
+                  "name": field_in(pkg, "name"),
+                  "version": field_in(pkg, "version") or ws_version,
+                  "description": field_in(pkg, "description"),
+                  # Cargo allows `license.workspace = true` for
+                  # inheritance — when the crate doesn't pin a string
+                  # license, fall through to the workspace value.
+                  "license": field_in(pkg, "license") or ws_license,
+              }
+
+          crates_dir = pathlib.Path("crates")
+          if not crates_dir.is_dir():
+              raise SystemExit("missing crates/ directory; not a Rust workspace?")
+
+          rendered = 0
+          for crate_dir in sorted(crates_dir.iterdir()):
+              cargo_toml = crate_dir / "Cargo.toml"
+              if not cargo_toml.is_file():
+                  continue
+              meta = parse_crate_meta(cargo_toml)
+              if not meta["name"]:
+                  continue
+
+              docs_rs_url = f"https://docs.rs/{meta['name']}/{meta['version']}"
+              crates_io_url = f"https://crates.io/crates/{meta['name']}"
+
+              parts = [
+                  f"# {meta['name']}",
+                  "",
+                  f"> **Version:** `v{meta['version']}` · "
+                  f"**License:** `{meta['license']}` · "
+                  f"**Crate:** [crates.io]({crates_io_url}) · "
+                  f"**API docs:** [docs.rs]({docs_rs_url})",
+                  "",
+              ]
+              if meta["description"]:
+                  parts.extend([meta["description"], ""])
+
+              # Embed the crate's README.md if present. Strip the
+              # leading HTML comment (Apache-2.0 license header) and
+              # the first H1 because the page already has both above.
+              readme = crate_dir / "README.md"
+              if readme.is_file():
+                  body = readme.read_text(encoding="utf-8")
+                  body = re.sub(r"^\s*<!--.*?-->\s*", "", body, count=1, flags=re.S)
+                  body = re.sub(r"^#\s+[^\n]+\n+", "", body, count=1)
+                  parts.extend(["## Overview", "", body.rstrip(), ""])
+              else:
+                  parts.extend([
+                      "_No README.md in source repo._",
+                      "",
+                      f"See [docs.rs]({docs_rs_url}) for full API reference.",
+                      "",
+                  ])
+
+              page = "\n".join(parts) + "\n"
+              dest = out_root / f"{meta['name']}.md"
+              dest.write_text(page, encoding="utf-8")
+              rendered += 1
+
+          print(f"rendered {rendered} crate pages")
+          if rendered == 0:
+              raise SystemExit("no crates found; aborting empty doc PR")
+          PY
+
+      - name: Escape MDX-special characters outside code regions
+        # Mintlify parses .md as MDX. Literal `{ ... }` in prose is
+        # interpreted as a JSX expression; literal `<X>` (e.g.
+        # `Result<T>`, `Option<u8>`) is parsed as a JSX component
+        # reference, which fails when the "component" isn't defined.
+        # Backtick-span detection (same walker as the Python template
+        # — see api-docs.python.yml) keeps code spans verbatim.
+        #
+        # Unlike the Python template, this one is more aggressive
+        # about `<`: it escapes `<` followed by anything except `!`
+        # (HTML comment) or `/` (closing tag). The Python template
+        # passes through `<X` where X is a letter because
+        # pydoc-markdown emits `<a id="...">` HTML anchors that need
+        # to render. We don't generate those here, and Rust prose is
+        # full of bare `Result<T>` references that would otherwise
+        # break the build.
+        working-directory: ${{ env.OUTPUT_DIR }}
+        run: |
+          find . -type f -name '*.md' -print0 | while IFS= read -r -d '' f; do
+            awk '
+              BEGIN { in_fence = 0 }
+              /^```/ { in_fence = !in_fence; print; next }
+              {
+                if (in_fence) { print; next }
+                s = $0
+                out = ""
+                n = length(s)
+                i = 1
+                while (i <= n) {
+                  c = substr(s, i, 1)
+                  if (c == "`") {
+                    runlen = 0
+                    while (i + runlen <= n && substr(s, i + runlen, 1) == "`") runlen++
+                    j = i + runlen
+                    close_at = 0
+                    while (j <= n) {
+                      if (substr(s, j, 1) == "`") {
+                        k = 0
+                        while (j + k <= n && substr(s, j + k, 1) == "`") k++
+                        if (k == runlen) { close_at = j; break }
+                        j += k
+                      } else {
+                        j++
+                      }
+                    }
+                    if (close_at > 0) {
+                      end = close_at + runlen - 1
+                      out = out substr(s, i, end - i + 1)
+                      i = end + 1
+                    } else {
+                      out = out substr(s, i, runlen)
+                      i += runlen
+                    }
+                  } else if (c == "{") {
+                    out = out "&#123;"; i++
+                  } else if (c == "}") {
+                    out = out "&#125;"; i++
+                  } else if (c == "<") {
+                    next_c = (i + 1 <= n) ? substr(s, i + 1, 1) : ""
+                    # Pass through HTML comments (<!--) and closing
+                    # tags (</foo>); escape everything else,
+                    # including `<X>` template syntax.
+                    if (next_c == "!" || next_c == "/") {
+                      out = out c; i++
+                    } else {
+                      out = out "&lt;"; i++
+                    }
+                  } else {
+                    out = out c; i++
+                  }
+                }
+                print out
+              }
+            ' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+          done
+
+      - name: Write top-level index
+        # Stub pages sort alphabetically; the README.mdx lists them
+        # all so users get a single overview of the crate workspace
+        # at the top of the Rust SDK section.
+        run: |
+          python3 - <<'PY' > "$OUTPUT_DIR/README.mdx"
+          import os
+          import pathlib
+          import re
+
+          ref_name = os.environ.get("DOCS_REF_NAME", "main")
+          repo = os.environ.get("GITHUB_REPOSITORY", "")
+          out = pathlib.Path(os.environ["OUTPUT_DIR"])
+
+          print("# ResQ Rust SDK")
+          print()
+          print(
+              f"Auto-generated reference for "
+              f"[`{repo}`](https://github.com/{repo}) "
+              f"at ref `{ref_name}`."
+          )
+          print()
+          print(
+              "Each entry below lists a crate published from the workspace. "
+              "Click through for the README plus a link to the canonical "
+              "[docs.rs](https://docs.rs) API reference."
+          )
+          print()
+          print("## Crates")
+          print()
+          for md in sorted(out.glob("*.md")):
+              name = md.stem
+              text = md.read_text(encoding="utf-8")
+              m = re.search(r"\*\*Version:\*\*\s+`v([^`]+)`", text)
+              version = m.group(1) if m else "unknown"
+              print(f"- `{name}` — `v{version}`")
+          PY
+
+      - name: Build pages index
+        # Flat JSON array of generated Markdown paths (without
+        # extension) so the docs repo can splice them into docs.json.
+        working-directory: ${{ env.OUTPUT_DIR }}
+        run: |
+          find . -name '*.md' -type f \
+            | sed 's|^\./||; s|\.md$||' \
+            | sort > _pages.txt
+          jq -R -s 'split("\n") | map(select(length > 0))' _pages.txt > _pages.json
+          rm _pages.txt
+
+      - name: Checkout docs repo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: resq-software/docs
+          path: docs-checkout
+          token: ${{ secrets.DOCS_REPO_PR_TOKEN }}
+          persist-credentials: false
+
+      - name: Sync generated Markdown into docs checkout
+        run: |
+          target="docs-checkout/${DOCS_TARGET}"
+          mkdir -p "$target"
+          rm -rf "${target:?}"/*
+          cp -R "${OUTPUT_DIR}/." "$target/"
+
+      - name: Splice _pages.json into docs.json nav
+        # Mintlify only routes pages registered in docs.json. The
+        # _pages.json artifact lists every generated Markdown path;
+        # rewrite the matching language sub-group under the
+        # 'Generated Package References' group so all pages are
+        # discoverable, in-content cross-links resolve, and direct
+        # URLs work.
+        working-directory: docs-checkout
+        run: |
+          python3 - <<'PYINNER'
+          import json
+          import pathlib
+
+          PREFIX = "sdks/rust/api"
+          LANG_LABEL = "Rust"
+
+          docs_path = pathlib.Path("docs.json")
+          docs = json.loads(docs_path.read_text())
+          pages_path = pathlib.Path(PREFIX) / "_pages.json"
+          if not pages_path.exists():
+              raise SystemExit(f"missing {pages_path}")
+          raw = json.loads(pages_path.read_text())
+
+          new_pages = [f"{PREFIX}/README"] + [
+              f"{PREFIX}/{p}" for p in raw if p != "README"
+          ]
+
+          en = next(l for l in docs["navigation"]["languages"] if l["language"] == "en")
+          sdks_tab = next(t for t in en["tabs"] if t["tab"] == "SDKs")
+          gen_group = next(g for g in sdks_tab["groups"] if g["group"] == "Generated Package References")
+          for sub in gen_group["pages"]:
+              if isinstance(sub, dict) and sub.get("group") == LANG_LABEL:
+                  sub["pages"] = new_pages
+                  break
+          else:
+              gen_group["pages"].append({"group": LANG_LABEL, "pages": new_pages})
+
+          docs_path.write_text(json.dumps(docs, indent=2, ensure_ascii=False))
+          print(f"Updated {LANG_LABEL} sub-group with {len(raw)} pages")
+          PYINNER
+
+      - name: Open PR in docs repo
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
+        with:
+          path: docs-checkout
+          token: ${{ secrets.DOCS_REPO_PR_TOKEN }}
+          author: 'resq-sw <engineer@resq.software>'
+          committer: 'resq-sw <engineer@resq.software>'
+          commit-message: |
+            docs(rust): sync API reference for ${{ env.DOCS_REF_NAME }}
+          title: 'docs(rust): API reference ${{ env.DOCS_REF_NAME }}'
+          body: |
+            Auto-generated by `${{ github.workflow }}` in
+            `${{ github.repository }}` for ref `${{ env.DOCS_REF_NAME }}`
+            (run: ${{ github.run_id }}).
+
+            Regenerated stub pages under `sdks/rust/api/`. Each page
+            embeds the crate's README and links to docs.rs for the
+            canonical API reference.
+          branch: auto/rust-api-${{ env.DOCS_REF_SLUG }}
+          base: main
+          delete-branch: true
+          add-paths: |
+            sdks/rust/api/**
+            docs.json
+          labels: |
+            automated
+            docs:api-ref
+            language:rust
