@@ -490,12 +490,12 @@ jobs:
           cp -R "${OUTPUT_DIR}/." "$target/"
 
       - name: Splice _pages.json into docs.json nav
-        # Mintlify only routes pages registered in docs.json. The
-        # _pages.json artifact lists every generated Markdown path;
-        # rewrite the matching language sub-group under the
-        # 'Generated Package References' group so all pages are
-        # discoverable, in-content cross-links resolve, and direct
-        # URLs work.
+        # Mintlify only routes pages registered in docs.json. Build
+        # hierarchical groups so each library crate becomes its own
+        # collapsible sidebar entry (`resq-dsa` → bloom, count_min,
+        # graph, ...) instead of flat siblings under the language
+        # group. Single-file stub crates (binary-only TUIs) stay as
+        # leaf pages directly under Rust.
         working-directory: docs-checkout
         run: |
           python3 - <<'PYINNER'
@@ -512,9 +512,54 @@ jobs:
               raise SystemExit(f"missing {pages_path}")
           raw = json.loads(pages_path.read_text())
 
-          new_pages = [f"{PREFIX}/README"] + [
-              f"{PREFIX}/{p}" for p in raw if p != "README"
-          ]
+          tree: dict = {}
+
+          def insert_file(node, parts, full_id):
+              if len(parts) == 1:
+                  node.setdefault("_files", []).append((parts[0], full_id))
+                  return
+              head, *rest = parts
+              insert_file(
+                  node.setdefault("_dirs", {}).setdefault(head, {}),
+                  rest,
+                  full_id,
+              )
+
+          def insert_landing(node, parts, full_id):
+              # Drill down to the dir node for `parts` and store the
+              # landing page id there. Stored on the dir itself
+              # rather than as a sibling _files leaf so the dir and
+              # its landing aren't both rendered in the parent group
+              # (the duplicate-entries bug fixed in #61).
+              cur = node
+              for part in parts:
+                  cur = cur.setdefault("_dirs", {}).setdefault(part, {})
+              cur["_landing"] = full_id
+
+          for p in raw:
+              if p in ("README", "index"):
+                  continue
+              if p.endswith("/index") or p.endswith("/README"):
+                  bare = p.rsplit("/", 1)[0]
+                  full_id = f"{PREFIX}/{bare}"
+                  parts = bare.split("/")
+                  insert_landing(tree, parts, full_id)
+              else:
+                  full_id = f"{PREFIX}/{p}"
+                  parts = p.split("/")
+                  insert_file(tree, parts, full_id)
+
+          def to_mintlify(node, group_name):
+              pages = []
+              if "_landing" in node:
+                  pages.append(node["_landing"])
+              for fname, full_id in sorted(node.get("_files", [])):
+                  pages.append(full_id)
+              for dname, sub in sorted(node.get("_dirs", {}).items()):
+                  pages.append(to_mintlify(sub, dname))
+              return pages if group_name is None else {"group": group_name, "pages": pages}
+
+          new_pages = [f"{PREFIX}/README"] + to_mintlify(tree, None)
 
           en = next(l for l in docs["navigation"]["languages"] if l["language"] == "en")
           sdks_tab = next(t for t in en["tabs"] if t["tab"] == "SDKs")
