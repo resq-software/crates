@@ -205,6 +205,30 @@ jobs:
           # (`resq-dsa`); convert with `-` → `_` to look them up.
           rustdoc_md_dir = pathlib.Path("target") / "doc-md"
 
+          # Smart sidebar-label formatting (mirrors the splice
+          # step's helper) so leaf stub pages also read with proper
+          # acronyms and brand casing.
+          ACRONYMS = {
+              "ai", "cli", "dsa", "tui", "api", "sdk", "ui", "mcp",
+              "ipfs", "grpc", "http", "url", "json", "yaml", "xml",
+              "sql", "css", "html", "io",
+          }
+          BRAND = {"resq": "ResQ"}
+
+          def label_for(name: str) -> str:
+              if "." in name:
+                  return name
+              out = []
+              for part in name.split("-"):
+                  lower = part.lower()
+                  if lower in BRAND:
+                      out.append(BRAND[lower])
+                  elif lower in ACRONYMS:
+                      out.append(part.upper())
+                  else:
+                      out.append(part.capitalize())
+              return " ".join(out)
+
           def banner_for(meta: dict) -> str:
               docs_rs_url = f"https://docs.rs/{meta['name']}/{meta['version']}"
               crates_io_url = f"https://crates.io/crates/{meta['name']}"
@@ -252,7 +276,15 @@ jobs:
               docs_rs_url = f"https://docs.rs/{meta['name']}/{meta['version']}"
               crates_io_url = f"https://crates.io/crates/{meta['name']}"
 
+              # Frontmatter sidebarTitle gives the leaf a clean
+              # display label like "ResQ Clean" / "ResQ Deploy" so
+              # binary-only stubs match the style of library
+              # crates' rustdoc groups in the sidebar.
               parts = [
+                  "---",
+                  f"sidebarTitle: '{label_for(meta['name'])}'",
+                  "---",
+                  "",
                   f"# {meta['name']}",
                   "",
                   f"> **Version:** `v{meta['version']}` · "
@@ -549,6 +581,35 @@ jobs:
                   parts = p.split("/")
                   insert_file(tree, parts, full_id)
 
+          # Smart group-label formatting so the sidebar reads
+          # "ResQ DSA" / "ResQ CLI" instead of the raw "resq-dsa" /
+          # "resq-cli" dir names. Acronyms upper-cased; the brand
+          # "ResQ" preserved with its mixed case; everything else
+          # title-cased. Result matches the brand voice and is
+          # consistent across all language sub-groups.
+          ACRONYMS = {
+              "ai", "cli", "dsa", "tui", "api", "sdk", "ui", "mcp",
+              "ipfs", "grpc", "http", "url", "json", "yaml", "xml",
+              "sql", "css", "html", "io",
+          }
+          BRAND = {"resq": "ResQ"}
+
+          def label_for(name):
+              # Pass dotted names through (e.g. .NET-style
+              # `ResQ.Blockchain` already carry canonical casing).
+              if "." in name:
+                  return name
+              out = []
+              for part in name.split("-"):
+                  lower = part.lower()
+                  if lower in BRAND:
+                      out.append(BRAND[lower])
+                  elif lower in ACRONYMS:
+                      out.append(part.upper())
+                  else:
+                      out.append(part.capitalize())
+              return " ".join(out)
+
           def to_mintlify(node, group_name):
               pages = []
               if "_landing" in node:
@@ -557,7 +618,9 @@ jobs:
                   pages.append(full_id)
               for dname, sub in sorted(node.get("_dirs", {}).items()):
                   pages.append(to_mintlify(sub, dname))
-              return pages if group_name is None else {"group": group_name, "pages": pages}
+              if group_name is None:
+                  return pages
+              return {"group": label_for(group_name), "pages": pages}
 
           new_pages = [f"{PREFIX}/README"] + to_mintlify(tree, None)
 
