@@ -252,22 +252,62 @@ jobs:
               rustdoc_src = rustdoc_md_dir / meta["lib_name"]
               if rustdoc_src.is_dir():
                   # Rich rustdoc output exists. Copy the whole tree
-                  # into OUTPUT_DIR/<crate>/ and inject the version
-                  # banner after the H1 of the landing index.md.
+                  # into OUTPUT_DIR/<crate>/, then REPLACE the
+                  # auto-generated index.md with a hybrid landing:
+                  #
+                  #   1. version banner
+                  #   2. cleaned README.md from the crate source
+                  #      (mermaid diagrams, badges, install
+                  #      instructions, etc. — the human-readable
+                  #      intro that cargo-doc-md doesn't produce)
+                  #   3. ## Modules section linking to each
+                  #      cargo-doc-md per-module page
+                  #
+                  # The original cargo-doc-md index.md content (just
+                  # the lib.rs //! doc + a flat module list) is
+                  # dropped because the README provides the same
+                  # information more richly, and the per-module pages
+                  # keep the full API surface intact.
                   dest = out_root / meta["name"]
                   if dest.exists():
                       shutil.rmtree(dest)
                   shutil.copytree(rustdoc_src, dest)
-                  landing = dest / "index.md"
-                  if landing.is_file():
-                      text = landing.read_text(encoding="utf-8")
-                      h1 = re.match(r"(# [^\n]+\n+)", text)
-                      banner = banner_for(meta)
-                      if h1:
-                          text = text[: h1.end()] + banner + text[h1.end():]
-                      else:
-                          text = banner + text
-                      landing.write_text(text, encoding="utf-8")
+
+                  module_files = sorted(
+                      p for p in dest.iterdir()
+                      if p.is_file()
+                      and p.suffix == ".md"
+                      and p.stem not in ("index", meta["lib_name"])
+                  )
+                  module_lines = [
+                      f"- [`{p.stem}`](./{p.stem})"
+                      for p in module_files
+                  ]
+
+                  readme = crate_dir / "README.md"
+                  body_parts = [f"# {meta['name']}", "", banner_for(meta).rstrip(), ""]
+                  if readme.is_file():
+                      body = readme.read_text(encoding="utf-8")
+                      body = re.sub(r"^\s*<!--.*?-->\s*", "", body, count=1, flags=re.S)
+                      body = re.sub(r"^#\s+[^\n]+\n+", "", body, count=1)
+                      body = rewrite_relative_links(body, crate_dir)
+                      body_parts.extend([body.rstrip(), ""])
+
+                  if module_lines:
+                      body_parts.extend([
+                          "## Modules",
+                          "",
+                          "Click through to each module for the full "
+                          "rustdoc-rendered API surface (types, traits, "
+                          "functions, methods).",
+                          "",
+                          *module_lines,
+                          "",
+                      ])
+
+                  (dest / "index.md").write_text(
+                      "\n".join(body_parts) + "\n", encoding="utf-8"
+                  )
                   rendered += 1
                   print(f"  rustdoc:  {meta['name']}")
                   continue
