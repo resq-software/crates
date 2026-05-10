@@ -29,8 +29,13 @@ permissions:
   contents: read
 
 concurrency:
+  # Only cancel in-flight runs for PR events (each PR push supersedes
+  # its predecessor). On master pushes, every commit must be scanned —
+  # cancelling left a chain of unscanned commits when several PRs
+  # merged in quick succession (#77, #78, #79, #82 on 2026-05-09 each
+  # cancelled the previous master scan before it could upload SARIF).
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   codeql:
