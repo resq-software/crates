@@ -38,15 +38,10 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Rebase onto master
-        if: >
-          steps.metadata.outputs.update-type == 'version-update:semver-minor' ||
-          steps.metadata.outputs.update-type == 'version-update:semver-patch'
-        run: gh pr comment "$PR_URL" --body "@dependabot rebase"
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+      # NOTE: no "@dependabot rebase" comment step here. Posting that comment via
+      # GITHUB_TOKEN is rejected ("only users with push access can use that
+      # command"), and it is unnecessary: `gh pr merge --auto` queues the merge
+      # and Dependabot rebases its own PRs automatically when they fall behind.
       - name: Auto-merge minor and patch updates
         if: >
           steps.metadata.outputs.update-type == 'version-update:semver-minor' ||
