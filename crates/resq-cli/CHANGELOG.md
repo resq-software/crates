@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0](https://github.com/resq-software/crates/releases/tag/0.3.0) - 2026-05-11
+
+### Added
+
+- *(cli)* Scan/tui command groups (Stage 3) ([#75](https://github.com/resq-software/crates/pull/75))
+- *(cli)* Global flags + shell completions + richer help (Stage 1) ([#74](https://github.com/resq-software/crates/pull/74))
+- Add resq commit with multi-provider AI commit message generation ([#70](https://github.com/resq-software/crates/pull/70))
+- *(cli)* Extract `resq format` subcommand from pre_commit orchestrator ([#62](https://github.com/resq-software/crates/pull/62))
+- *(cli)* Consolidate hook surface under `hooks`; deprecate `dev` paths ([#60](https://github.com/resq-software/crates/pull/60))
+- *(copyright)* Detect author mismatch, not just license mismatch ([#59](https://github.com/resq-software/crates/pull/59))
+
+### CI
+
+- Migrate to reusable rust-ci, remove clippy.yml + deny.yml ([#71](https://github.com/resq-software/crates/pull/71))
+
+### Changed
+
+- *(cli)* Remove orphaned lqip / cost / tree-shake commands ([#61](https://github.com/resq-software/crates/pull/61))
+
+
+
 ## [0.3.0](https://github.com/resq-software/crates/releases/tag/0.3.0) - 2026-05-04
 
 ### Added
