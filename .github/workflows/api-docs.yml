@@ -42,8 +42,17 @@ jobs:
         # Single source of truth for the ref this run documents.
         # workflow_dispatch can pass an alternate ref via inputs.ref;
         # fall back to github.ref_name (already stripped of refs/...).
+        #
+        # The ref is routed through env: instead of being inlined via
+        # ${{ }}. Inlining at template-expansion time would interpolate
+        # the raw string into the shell literal, so a tag name with a
+        # single quote (Git allows it) could break out of the quoted
+        # context. Env indirection keeps user-controlled data on the
+        # variable side of the shell parser, where it cannot escape.
+        env:
+          REF_RAW: ${{ inputs.ref || github.ref_name }}
         run: |
-          raw='${{ inputs.ref || github.ref_name }}'
+          raw="$REF_RAW"
           raw="${raw#refs/tags/}"
           raw="${raw#refs/heads/}"
           slug="${raw//\//-}"
@@ -68,9 +77,15 @@ jobs:
         # `cargo install` rebuilds quickly when its version doesn't
         # change between runs because the runner's cache reuses the
         # cargo registry.
+        #
+        # The version is pinned because this binary runs with the
+        # repo's checkout in scope and the DOCS_REPO_PR_TOKEN secret in
+        # env. `--locked` alone only locks transitive resolution; it
+        # does NOT pin the cargo-doc-md package itself. Bumping
+        # requires reviewing the upstream release diff.
         run: |
           rustup toolchain install nightly --profile minimal --no-self-update
-          cargo install cargo-doc-md --locked
+          cargo install --locked --version 0.11.0 cargo-doc-md
 
       - name: Generate rustdoc markdown
         # Run cargo-doc-md across the workspace. Output goes to
