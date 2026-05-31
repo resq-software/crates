@@ -50,7 +50,7 @@ aho-corasick = "1.1"
 rayon = "1.10"
 
 # Shell command helpers
-shlex = "1.3"
+shlex = "2.0"
 
 [lib]
 path = "src/lib.rs"
