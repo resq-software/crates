@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1](https://github.com/resq-software/crates/releases/tag/0.3.1) - 2026-06-08
+
+### Dependencies
+
+- *(deps)* Update shlex requirement from 1.3 to 2.0 ([#98](https://github.com/resq-software/crates/pull/98))
+
+
+
 ## [0.3.1](https://github.com/resq-software/crates/releases/tag/0.3.1) - 2026-06-01
 
 ### Dependencies
