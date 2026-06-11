@@ -1,53 +1,38 @@
-# Copyright 2026 ResQ
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-version: 2
 updates:
-  # GitHub Actions — Monday
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 3
-    labels:
-      - "dependencies"
-      - "github-actions"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    groups:
-      actions-minor-patch:
-        update-types:
-          - "minor"
-          - "patch"
-
-  # Rust — Tuesday
-  - package-ecosystem: "cargo"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "tuesday"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "rust"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    groups:
-      rust-minor-patch:
-        update-types:
-          - "minor"
-          - "patch"
+- commit-message:
+    include: scope
+    prefix: chore
+  directory: /
+  groups:
+    actions-minor-patch:
+      update-types:
+      - minor
+      - patch
+  ignore:
+  - dependency-name: "github/gh-aw-actions" # Managed by gh aw compile. Version-locked to the gh-aw compiler; do not bump.
+  labels:
+  - dependencies
+  - github-actions
+  open-pull-requests-limit: 3
+  package-ecosystem: github-actions
+  schedule:
+    day: monday
+    interval: weekly
+- commit-message:
+    include: scope
+    prefix: chore
+  directory: /
+  groups:
+    rust-minor-patch:
+      update-types:
+      - minor
+      - patch
+  labels:
+  - dependencies
+  - rust
+  open-pull-requests-limit: 5
+  package-ecosystem: cargo
+  schedule:
+    day: tuesday
+    interval: weekly
+version: 2
