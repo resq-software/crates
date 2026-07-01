@@ -42,7 +42,7 @@ reqwest = { workspace = true }
 # Binary analysis and process info (Memory Profiler)
 object = "0.39"
 procfs = "0.18"
-addr2line = "0.26"
+addr2line = "0.27"
 
 # Shared TUI components
 resq-tui = { workspace = true }
