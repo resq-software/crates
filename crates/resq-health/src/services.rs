@@ -172,7 +172,7 @@ async fn check_service(client: &Client, name: String, url: String) -> ServiceHea
     // Standard HTTP health check
     match client.get(&url).send().await {
         Ok(resp) => {
-            let latency_ms = start.elapsed().as_millis() as u64;
+            let latency_ms = u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX);
 
             if resp.status().is_success() {
                 // Try to parse JSON response
@@ -213,7 +213,7 @@ async fn check_service(client: &Client, name: String, url: String) -> ServiceHea
             }
         }
         Err(e) => {
-            let latency_ms = start.elapsed().as_millis() as u64;
+            let latency_ms = u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX);
             let error_msg = if e.is_connect() {
                 "Connection refused".to_string()
             } else if e.is_timeout() {
@@ -249,7 +249,7 @@ async fn check_neo_rpc(
 
     match client.post(&url).json(&payload).send().await {
         Ok(resp) => {
-            let latency_ms = start.elapsed().as_millis() as u64;
+            let latency_ms = u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX);
 
             if resp.status().is_success() {
                 match resp.json::<NeoRpcResponse>().await {
@@ -279,7 +279,7 @@ async fn check_neo_rpc(
             }
         }
         Err(e) => {
-            let latency_ms = start.elapsed().as_millis() as u64;
+            let latency_ms = u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX);
             ServiceHealth {
                 name,
                 url,

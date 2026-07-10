@@ -16,7 +16,6 @@
 
 //! `ResQ` Health-Explorer TUI v2.1 - Optimized & Non-blocking
 
-#![allow(clippy::pedantic)]
 #![deny(missing_docs)]
 
 mod integration;
@@ -318,7 +317,7 @@ fn draw_services(f: &mut Frame, app: &mut App, area: Rect) {
             HealthStatus::Healthy => Style::default().fg(app.theme.success),
             HealthStatus::Degraded => Style::default().fg(app.theme.warning),
             HealthStatus::Unhealthy => Style::default().fg(app.theme.error),
-            _ => Style::default().fg(app.theme.inactive),
+            HealthStatus::Unknown => Style::default().fg(app.theme.inactive),
         };
 
         Row::new(vec![
@@ -362,9 +361,8 @@ fn draw_services(f: &mut Frame, app: &mut App, area: Rect) {
 }
 
 fn draw_details(f: &mut Frame, app: &mut App, area: Rect) {
-    let service = match app.selected_service() {
-        Some(s) => s,
-        None => return,
+    let Some(service) = app.selected_service() else {
+        return;
     };
     let block = Block::default()
         .title(format!(" {} ", service.name.to_uppercase()))
