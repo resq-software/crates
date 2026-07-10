@@ -58,7 +58,12 @@ jobs:
 
       - name: Install cross (linux arm64)
         if: matrix.cross == true
-        run: cargo install cross --locked
+        # SECURITY: pin the version. `cross` drives the actual compilation of the
+        # distributed aarch64 binary *before* SHA256SUMS is computed, so a
+        # malicious `cross` release would backdoor the artifact while end-user
+        # checksum verification still passes. An unpinned install silently adopts
+        # whatever version is newest at release time.
+        run: cargo install cross --version 0.2.5 --locked
 
       - name: Build
         shell: bash

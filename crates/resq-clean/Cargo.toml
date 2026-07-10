@@ -35,5 +35,8 @@ tokio = { workspace = true }
 colored = "3.1"
 resq-tui = { workspace = true }
 
+[dev-dependencies]
+tempfile = { workspace = true }
+
 [lints]
 workspace = true
