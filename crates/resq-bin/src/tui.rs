@@ -125,7 +125,7 @@ impl App {
             stats_cache_hits,
             issues,
             show_help: false,
-            theme: Theme::default(),
+            theme: Theme::adaptive(),
         }
     }
 

@@ -109,7 +109,7 @@ impl App {
             containers: Vec::new(),
             output_lines: VecDeque::with_capacity(500),
             project_root,
-            theme: Theme::default(),
+            theme: Theme::adaptive(),
             tx,
             rx,
         }

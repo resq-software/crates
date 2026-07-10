@@ -21,13 +21,15 @@
 
 #![deny(missing_docs)]
 
+use anyhow::Context;
 use clap::{Parser, Subcommand};
 use inferno::flamegraph::{self, Options as FlamegraphOptions};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt;
 use std::fs;
 use std::io::{BufReader, BufWriter, Cursor};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use resq_tui::crossterm::event::{self, KeyCode, KeyEventKind};
 use resq_tui::ratatui::{
@@ -112,7 +114,7 @@ impl App {
                 },
             ],
             list_state,
-            theme: Theme::default(),
+            theme: Theme::adaptive(),
             output_path,
             selected_target: None,
         }
@@ -160,16 +162,12 @@ impl TuiApp for App {
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    if cli.command.is_some() {
-        // The subcommand profiling path is not implemented. Fail loudly (non-zero
-        // exit) rather than returning Ok(()) — an exit-0 no-op makes automation
-        // and CI believe a profile was produced when nothing ran.
-        anyhow::bail!(
-            "subcommand mode is not yet implemented — no profiling ran and no output was written. \
-             resq-flame is pre-release; do not depend on this path yet."
-        );
+    // Subcommand mode: scripted, non-interactive profiling.
+    if let Some(Commands::Hce { url, duration }) = &cli.command {
+        return run_hce_profile(url, *duration, &cli.output, cli.open).await;
     }
 
+    // Interactive TUI mode: pick a target, then dispatch.
     let mut app = App::new(cli.output.clone());
     let mut guard = terminal::init()?;
     terminal::run_loop(&mut guard, 100, &mut app)?;
@@ -177,16 +175,99 @@ async fn main() -> anyhow::Result<()> {
 
     if let Some(idx) = app.selected_target {
         let target = &app.services[idx];
-        // The backend dispatch (inferno/py-spy/perf) is not implemented yet, so
-        // no SVG is generated. Bail instead of printing a success-looking message
-        // and exiting 0 with no file at cli.output.
+        match target.cmd_type.as_str() {
+            // HCE is the implemented engine. The TUI has no URL/duration inputs
+            // yet, so it uses the same defaults as `resq-flame hce`.
+            "hce" => {
+                run_hce_profile("http://localhost:5000", 5000, &cli.output, cli.open).await?;
+            }
+            // api (pprof) / python (py-spy) / perf (perf record) are not wired up
+            // yet. Bail loudly rather than exiting 0 with no flame graph.
+            other => anyhow::bail!(
+                "profiling for {} (engine: {}) is not yet implemented — no flame graph was \
+                 written to {}. Only the `hce` engine is available today.",
+                target.name,
+                other,
+                cli.output.display()
+            ),
+        }
+    }
+
+    Ok(())
+}
+
+/// Fetch a V8 CPU profile from the coordination-hce server, fold it into
+/// stack-collapse format, and render an interactive SVG flame graph.
+///
+/// HCE samples for `duration_ms` before responding, so the window is only
+/// meaningful while the service is under load — generate traffic first.
+async fn run_hce_profile(
+    url: &str,
+    duration_ms: u64,
+    output: &Path,
+    open_after: bool,
+) -> anyhow::Result<()> {
+    let endpoint = format!("{}/admin/cpu-profile", url.trim_end_matches('/'));
+    println!("🔥 Profiling HCE at {endpoint} for {duration_ms}ms (drive load now)…");
+
+    // The server blocks for ~duration_ms while sampling, so the client timeout
+    // must comfortably exceed the profiling window plus transfer time.
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_millis(duration_ms + 30_000))
+        .build()
+        .context("failed to build HTTP client")?;
+
+    let mut req = client
+        .post(&endpoint)
+        .json(&serde_json::json!({ "durationMs": duration_ms, "intervalUs": 100 }));
+
+    // HCE's authGuard accepts either a Bearer JWT or an `x-api-key`; admin routes
+    // do not enforce a role. Prefer a token, fall back to an API key.
+    match (std::env::var("RESQ_TOKEN"), std::env::var("RESQ_API_KEY")) {
+        (Ok(token), _) if !token.is_empty() => req = req.bearer_auth(token),
+        (_, Ok(key)) if !key.is_empty() => req = req.header("x-api-key", key),
+        _ => anyhow::bail!(
+            "no HCE credentials — set RESQ_TOKEN (a Bearer JWT) or RESQ_API_KEY (an x-api-key)"
+        ),
+    }
+
+    let resp = req
+        .send()
+        .await
+        .context("request to HCE /admin/cpu-profile failed")?;
+    let status = resp.status();
+    let body = resp
+        .text()
+        .await
+        .context("failed to read HCE response body")?;
+    if !status.is_success() {
+        anyhow::bail!("HCE returned {status}: {}", body.trim());
+    }
+
+    let profile: CpuProfile =
+        serde_json::from_str(&body).context("failed to parse .cpuprofile JSON from HCE")?;
+    let folded = cpuprofile_to_folded(&profile);
+    if folded.trim().is_empty() {
         anyhow::bail!(
-            "profiling for {} (engine: {}) is not yet implemented — no flame graph was written to {}. \
-             resq-flame is pre-release; the backend dispatch is still a TODO.",
-            target.name,
-            target.cmd_type,
-            cli.output.display()
+            "profile contained no samples — HCE was idle during the {duration_ms}ms window; \
+             drive traffic (e.g. the perf suite) while profiling and retry"
         );
+    }
+
+    generate_svg(
+        &folded,
+        output,
+        Some("ResQ HCE — CPU Flame Graph"),
+        false,
+        0.1,
+    )
+    .map_err(|e| anyhow::anyhow!("flame graph generation failed: {e}"))?;
+    println!("✅ Flame graph written to {}", output.display());
+
+    if open_after {
+        if let Err(e) = open::that(output) {
+            eprintln!("warning: could not open {}: {e}", output.display());
+        }
     }
 
     Ok(())
@@ -283,8 +364,8 @@ fn draw_ui(f: &mut Frame, app: &mut App) {
     );
 }
 
-// Minimal inferno integration placeholders to keep existing functionality
-fn _generate_svg(
+// Render folded stack samples into an interactive SVG flame graph via inferno.
+fn generate_svg(
     folded: &str,
     output: &std::path::Path,
     title: Option<&str>,
@@ -328,35 +409,48 @@ impl fmt::Display for AppError {
 impl std::error::Error for AppError {}
 
 /// A single call frame in a CPU profile node.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 struct CallFrame {
     /// The name of the function.
     function_name: String,
-    /// Source URL (may be empty).
+    /// Source URL (may be empty or absent on synthetic/native frames).
+    #[serde(default)]
     url: String,
-    /// Line number in the source file.
-    line_number: u32,
+    /// Line number in the source file. V8 emits `-1` for root/native/synthetic
+    /// frames, so this is signed; the folder never reads it.
+    #[serde(default)]
+    line_number: i64,
 }
 
 /// A node in the CPU profile tree.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 struct CpuNode {
     /// Unique identifier for this node.
     id: u64,
-    /// The call frame data for this node.
+    /// The call frame data for this node (`callFrame` in the V8 JSON).
     call_frame: CallFrame,
-    /// Child node IDs.
+    /// Child node IDs. Omitted (not `[]`) on leaf nodes, hence `default`.
+    #[serde(default)]
     children: Vec<u64>,
 }
 
 /// A parsed V8/Chrome CPU profile.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 struct CpuProfile {
     /// All nodes in the profile tree.
+    #[serde(default)]
     nodes: Vec<CpuNode>,
-    /// Sample node IDs collected at regular intervals.
+    /// Leaf node id sampled at each tick.
+    #[serde(default)]
     samples: Vec<u64>,
-    /// Time deltas between samples in microseconds.
+    /// Time deltas between samples in microseconds (`timeDeltas`; unused).
+    #[serde(default)]
     time_deltas: Vec<i64>,
 }
 

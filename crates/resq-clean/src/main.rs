@@ -74,7 +74,7 @@ impl App {
             root,
             entries: Vec::new(),
             list_state: ListState::default(),
-            theme: Theme::default(),
+            theme: Theme::adaptive(),
             dry_run,
             status: None,
         }

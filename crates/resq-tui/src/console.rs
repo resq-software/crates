@@ -68,7 +68,7 @@ fn color_to_ansi_fg(color: ratatui::style::Color) -> String {
         Color::Blue => "\x1b[34m".into(),
         Color::Magenta => "\x1b[35m".into(),
         Color::Cyan => "\x1b[36m".into(),
-        Color::White => "\x1b[37m".into(),
+        Color::White | Color::Gray => "\x1b[37m".into(),
         Color::DarkGray => "\x1b[90m".into(),
         Color::LightRed => "\x1b[91m".into(),
         Color::LightGreen => "\x1b[92m".into(),
@@ -76,7 +76,6 @@ fn color_to_ansi_fg(color: ratatui::style::Color) -> String {
         Color::LightBlue => "\x1b[94m".into(),
         Color::LightMagenta => "\x1b[95m".into(),
         Color::LightCyan => "\x1b[96m".into(),
-        Color::Gray => "\x1b[37m".into(),
         Color::Indexed(n) => format!("\x1b[38;5;{n}m"),
         Color::Reset => String::new(),
     }
@@ -87,51 +86,64 @@ fn color_to_ansi_fg(color: ratatui::style::Color) -> String {
 // ---------------------------------------------------------------------------
 
 /// Formats a success message: `✅ <message>`
+#[must_use]
 pub fn format_success(message: &str) -> String {
     format!("✅ {}", style_fg(message, theme::COLOR_SUCCESS.resolve()))
 }
 
 /// Formats an error message: `❌ <message>`
+#[must_use]
 pub fn format_error(message: &str) -> String {
     format!("❌ {}", style_bold(message, theme::COLOR_ERROR.resolve()))
 }
 
 /// Formats a warning message: `⚠️  <message>`
+#[must_use]
 pub fn format_warning(message: &str) -> String {
     format!("⚠️  {}", style_fg(message, theme::COLOR_WARNING.resolve()))
 }
 
 /// Formats an info message: `ℹ️  <message>`
+#[must_use]
 pub fn format_info(message: &str) -> String {
     format!("ℹ️  {}", style_fg(message, theme::COLOR_PRIMARY.resolve()))
 }
 
 /// Formats a command reference: `▶ <command>`
+#[must_use]
 pub fn format_command(command: &str) -> String {
-    format!("▶ {}", style_bold(command, theme::COLOR_SECONDARY.resolve()))
+    format!(
+        "▶ {}",
+        style_bold(command, theme::COLOR_SECONDARY.resolve())
+    )
 }
 
 /// Formats a progress/in-flight message: `⏳ <message>`
+#[must_use]
 pub fn format_progress(message: &str) -> String {
     format!("⏳ {}", style_fg(message, theme::COLOR_WARNING.resolve()))
 }
 
 /// Formats a prompt message: `? <message>`
+#[must_use]
 pub fn format_prompt(message: &str) -> String {
     format!("? {}", style_bold(message, theme::COLOR_PRIMARY.resolve()))
 }
 
 /// Formats a verbose/debug message (dim).
+#[must_use]
 pub fn format_verbose(message: &str) -> String {
     style_dim(message)
 }
 
 /// Formats a list item: `  • <message>`
+#[must_use]
 pub fn format_list_item(message: &str) -> String {
     format!("  • {message}")
 }
 
 /// Formats a section header with a rule line.
+#[must_use]
 pub fn format_section_header(header: &str) -> String {
     let bar = "━".repeat(74usize.saturating_sub(header.len() + 1));
     format!(
@@ -142,21 +154,25 @@ pub fn format_section_header(header: &str) -> String {
 }
 
 /// Formats a count/metric message: `📊 <message>`
+#[must_use]
 pub fn format_count(message: &str) -> String {
     format!("📊 {}", style_fg(message, theme::COLOR_ACCENT.resolve()))
 }
 
 /// Formats a location/path message: `📁 <message>`
+#[must_use]
 pub fn format_location(message: &str) -> String {
     format!("📁 {}", style_fg(message, theme::COLOR_SECONDARY.resolve()))
 }
 
 /// Formats a list header.
+#[must_use]
 pub fn format_list_header(header: &str) -> String {
     style_bold(header, theme::COLOR_FG.resolve())
 }
 
 /// Formats a search/scan message: `🔍 <message>`
+#[must_use]
 pub fn format_search(message: &str) -> String {
     format!("🔍 {}", style_fg(message, theme::COLOR_PRIMARY.resolve()))
 }

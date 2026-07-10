@@ -44,6 +44,7 @@ pub struct Column {
 
 impl Column {
     /// Creates a left-aligned column.
+    #[must_use]
     pub fn new(header: &str) -> Self {
         Self {
             header: header.to_string(),
@@ -53,6 +54,7 @@ impl Column {
     }
 
     /// Creates a right-aligned column.
+    #[must_use]
     pub fn right(header: &str) -> Self {
         Self {
             header: header.to_string(),
@@ -62,6 +64,7 @@ impl Column {
     }
 
     /// Sets minimum column width.
+    #[must_use]
     pub fn width(mut self, w: usize) -> Self {
         self.min_width = w;
         self
@@ -143,7 +146,7 @@ pub fn render_table(columns: &[Column], rows: &[Vec<String>]) {
             .iter()
             .enumerate()
             .map(|(i, col)| {
-                let cell = row.get(i).map(|s| s.as_str()).unwrap_or("");
+                let cell = row.get(i).map_or("", std::string::String::as_str);
                 pad(cell, widths[i], col.align)
             })
             .collect::<Vec<_>>()
@@ -161,8 +164,8 @@ pub fn render_table(columns: &[Column], rows: &[Vec<String>]) {
 /// Pads a string to the given width with the given alignment.
 fn pad(text: &str, width: usize, align: Align) -> String {
     match align {
-        Align::Left => format!("{:<width$}", text, width = width),
-        Align::Right => format!("{:>width$}", text, width = width),
+        Align::Left => format!("{text:<width$}"),
+        Align::Right => format!("{text:>width$}"),
     }
 }
 
@@ -171,7 +174,7 @@ fn color_to_fg(color: ratatui::style::Color) -> String {
     use ratatui::style::Color;
     match color {
         Color::Rgb(r, g, b) => format!("\x1b[38;2;{r};{g};{b}m"),
-        Color::Reset => String::new(),
+        // Reset and every non-RGB color fall back to no ANSI sequence.
         _ => String::new(),
     }
 }

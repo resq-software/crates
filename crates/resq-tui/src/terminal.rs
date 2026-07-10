@@ -68,6 +68,15 @@ impl Drop for TerminalGuard {
 /// # Errors
 /// Propagates any I/O error from Crossterm or Ratatui.
 pub fn init() -> anyhow::Result<TerminalGuard> {
+    // Refuse to start when stdout is redirected or piped: entering raw mode and
+    // the alternate screen would spray control bytes into the file/pipe (e.g.
+    // `resq-perf > perf.log`) and leave the caller's terminal untouched but the
+    // output corrupted. Fail cleanly instead.
+    if !crate::detect::is_tty_stdout() {
+        anyhow::bail!(
+            "refusing to start the TUI: stdout is not a terminal (it looks redirected or piped)"
+        );
+    }
     enable_raw_mode()?;
     if let Err(e) = execute!(io::stdout(), EnterAlternateScreen) {
         restore();

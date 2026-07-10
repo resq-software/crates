@@ -45,6 +45,9 @@ pub enum ColorMode {
 // Cached detection (computed once per process)
 // ---------------------------------------------------------------------------
 
+// Six independent, cached environment facts — a flat record, not a state that
+// would be better modelled as an enum, so the bool count is expected here.
+#[allow(clippy::struct_excessive_bools)]
 struct DetectedEnv {
     stdout_tty: bool,
     stderr_tty: bool,
@@ -58,17 +61,13 @@ fn detect() -> &'static DetectedEnv {
     static ENV: OnceLock<DetectedEnv> = OnceLock::new();
     ENV.get_or_init(|| {
         let no_color = std::env::var_os("NO_COLOR").is_some();
-        let term_dumb = std::env::var("TERM")
-            .map(|t| t == "dumb")
-            .unwrap_or(false);
+        let term_dumb = std::env::var("TERM").is_ok_and(|t| t == "dumb");
         let accessible = std::env::var_os("ACCESSIBLE").is_some();
 
         let stdout_tty = io::stdout().is_tty();
         let stderr_tty = io::stderr().is_tty();
 
-        let color_mode = if no_color || term_dumb || accessible {
-            ColorMode::None
-        } else if !stdout_tty && !stderr_tty {
+        let color_mode = if no_color || term_dumb || accessible || (!stdout_tty && !stderr_tty) {
             ColorMode::None
         } else {
             // Heuristic: check COLORFGBG (set by some terminals like rxvt)
@@ -76,7 +75,10 @@ fn detect() -> &'static DetectedEnv {
             // Also check macOS Terminal.app `TERM_PROGRAM` or `ITERM_PROFILE`.
             // Fallback: assume dark.
             if let Ok(colorfgbg) = std::env::var("COLORFGBG") {
-                if let Some(bg) = colorfgbg.rsplit(';').next().and_then(|s| s.parse::<u8>().ok())
+                if let Some(bg) = colorfgbg
+                    .rsplit(';')
+                    .next()
+                    .and_then(|s| s.parse::<u8>().ok())
                 {
                     if bg >= 8 {
                         return DetectedEnv {
@@ -109,11 +111,13 @@ fn detect() -> &'static DetectedEnv {
 // ---------------------------------------------------------------------------
 
 /// Returns `true` if stdout is connected to a terminal.
+#[must_use]
 pub fn is_tty_stdout() -> bool {
     detect().stdout_tty
 }
 
 /// Returns `true` if stderr is connected to a terminal.
+#[must_use]
 pub fn is_tty_stderr() -> bool {
     detect().stderr_tty
 }
@@ -121,6 +125,7 @@ pub fn is_tty_stderr() -> bool {
 /// Returns `true` if the environment requests accessible / plain output.
 ///
 /// Checks: `NO_COLOR`, `TERM=dumb`, `ACCESSIBLE`.
+#[must_use]
 pub fn is_accessible_mode() -> bool {
     let env = detect();
     env.no_color || env.term_dumb || env.accessible
@@ -130,12 +135,14 @@ pub fn is_accessible_mode() -> bool {
 ///
 /// This is the master gate — all console formatters check this before
 /// applying any ANSI styling.
+#[must_use]
 pub fn should_style() -> bool {
     let env = detect();
     env.stderr_tty && !env.no_color && !env.term_dumb && !env.accessible
 }
 
 /// Returns the detected color mode for adaptive color selection.
+#[must_use]
 pub fn detect_color_mode() -> ColorMode {
     detect().color_mode
 }

@@ -98,7 +98,7 @@ impl App {
             search_query: String::new(),
             input_mode: InputMode::Normal,
             search_input: String::new(),
-            theme: Theme::default(),
+            theme: Theme::adaptive(),
             rx,
         }
     }

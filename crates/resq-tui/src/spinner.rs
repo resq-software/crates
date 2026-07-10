@@ -58,6 +58,7 @@ impl Spinner {
     ///
     /// In non-TTY or accessible mode, prints the message once without
     /// animation.
+    #[must_use]
     pub fn start(message: &str) -> Self {
         let running = Arc::new(AtomicBool::new(true));
 
@@ -99,18 +100,20 @@ impl Spinner {
     }
 
     /// Stops the spinner and prints a final message.
-    pub fn stop_with_message(self, message: &str) {
+    pub fn stop_with_message(mut self, message: &str) {
         self.running.store(false, Ordering::Relaxed);
-        if let Some(handle) = self.handle {
+        // `take()` moves the handle out through `&mut self`; a direct field move
+        // is rejected because `Spinner` implements `Drop`.
+        if let Some(handle) = self.handle.take() {
             let _ = handle.join();
         }
         eprintln!("{message}");
     }
 
     /// Stops the spinner without printing a final message.
-    pub fn stop(self) {
+    pub fn stop(mut self) {
         self.running.store(false, Ordering::Relaxed);
-        if let Some(handle) = self.handle {
+        if let Some(handle) = self.handle.take() {
             let _ = handle.join();
         }
     }
