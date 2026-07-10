@@ -29,6 +29,7 @@ chrono = { workspace = true }
 clap = { workspace = true }
 clap_complete = { workspace = true }
 glob = { workspace = true }
+ignore = { workspace = true }
 once_cell = { workspace = true }
 ratatui = { workspace = true }
 crossterm = { workspace = true }

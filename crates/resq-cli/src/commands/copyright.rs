@@ -734,14 +734,12 @@ fn discover_files(args: &CopyrightArgs) -> Result<Vec<PathBuf>> {
         collect_files_from_walk(&root)
     };
 
-    // Build exclude set: user excludes + gitignore-derived dirs
-    let gitignore_excludes = crate::gitignore::parse_gitignore(&root);
-    let exclude_patterns: Vec<String> = args
-        .exclude
-        .iter()
-        .cloned()
-        .chain(gitignore_excludes)
-        .collect();
+    // Gitignore rules are matched correctly (wildcards, negations, anchoring)
+    // via the `ignore` crate. User-supplied `--exclude` values keep their
+    // original substring semantics. The old code merged both into one bag and
+    // substring-matched everything, so `copyright` rewrote gitignored
+    // `generated/*.rs` and skipped any path merely containing an excluded name.
+    let ignore_matcher = crate::gitignore::load(&root);
 
     // Normalize extensions for filtering
     let ext_filter: HashSet<String> = args
@@ -752,9 +750,10 @@ fn discover_files(args: &CopyrightArgs) -> Result<Vec<PathBuf>> {
 
     let files: Vec<PathBuf> = raw
         .into_iter()
+        .filter(|p| !ignore_matcher.is_ignored(p, false))
         .filter(|p| {
             let s = p.to_string_lossy();
-            !exclude_patterns.iter().any(|ex| s.contains(ex.as_str()))
+            !args.exclude.iter().any(|ex| s.contains(ex.as_str()))
         })
         .filter(|p| {
             if ext_filter.is_empty() {

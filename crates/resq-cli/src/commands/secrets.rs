@@ -595,14 +595,15 @@ fn get_history_diffs(root: &Path, since: Option<&str>) -> Vec<(String, Vec<Strin
 
 // ── Skip Logic ────────────────────────────────────────────────────────────────
 
-fn should_skip(path: &Path, gitignore_excludes: &[String]) -> bool {
+fn should_skip(path: &Path, ignore_matcher: &crate::gitignore::Matcher) -> bool {
     const SKIP_EXT: &[&str] = &[
         "png", "jpg", "jpeg", "gif", "ico", "svg", "webp", "woff", "woff2", "ttf", "eot", "mp3",
         "mp4", "wav", "avi", "mov", "pdf", "zip", "gz", "tar", "bz2", "7z", "rar", "exe", "dll",
         "so", "dylib", "o", "a", "wasm", "lock",
     ];
 
-    if crate::gitignore::should_skip_path(path, gitignore_excludes) {
+    // Files being scanned are regular files, so `is_dir = false`.
+    if ignore_matcher.is_ignored(path, false) {
         return true;
     }
 
@@ -737,7 +738,7 @@ pub async fn run(args: SecretsArgs) -> Result<()> {
         .allowlist
         .unwrap_or_else(|| root.join(".secretsignore"));
     let allowlist = load_allowlist(&allowlist_path);
-    let gitignore_excludes = crate::gitignore::parse_gitignore(&root);
+    let ignore_matcher = crate::gitignore::load(&root);
 
     if args.verbose {
         println!("🔍 Scanning for secrets in: {}", root.display());
@@ -817,7 +818,7 @@ pub async fn run(args: SecretsArgs) -> Result<()> {
 
     let files: Vec<PathBuf> = files
         .into_iter()
-        .filter(|p| !should_skip(p, &gitignore_excludes))
+        .filter(|p| !should_skip(p, &ignore_matcher))
         .collect();
 
     if args.verbose {

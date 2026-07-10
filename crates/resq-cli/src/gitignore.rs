@@ -14,16 +14,21 @@
  * limitations under the License.
  */
 
-// Gitignore parsing and utilities.
-//
-// Provides functions for parsing .gitignore files and matching
-// paths against ignore patterns.
+//! Gitignore matching for the file-mutating commands (`copyright`, `secrets`).
+//!
+//! Backed by the `ignore` crate's [`Gitignore`] matcher, which implements real
+//! gitignore semantics — wildcards (`*.rs`), negations (`!keep`), anchoring
+//! (`/build` vs `build`) and directory rules. The previous hand-rolled parser
+//! dropped every wildcard and negation and matched bare names by substring, so
+//! `copyright` would rewrite gitignored `generated/*.rs`, over-skip any path
+//! merely *containing* an excluded name (e.g. `rebuild.rs` for `build`), and
+//! ignore `!keep` re-includes entirely.
 
-use std::collections::HashSet;
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-/// Fallback exclude dirs when `.gitignore` is missing or unreadable.
+use ignore::gitignore::{Gitignore, GitignoreBuilder};
+
+/// Fallback exclude dirs applied when the repo has no `.gitignore`.
 const FALLBACK_EXCLUDES: &[&str] = &[
     "node_modules",
     ".git",
@@ -39,135 +44,158 @@ const FALLBACK_EXCLUDES: &[&str] = &[
     "coverage",
 ];
 
-/// Parse `.gitignore` from `root` and return a list of simple directory/file
-/// names to exclude during traversal.
-///
-/// Strategy (matches the TS `parseGitignore` in `sync-turbo-env.ts`):
-/// - Read `.gitignore`, split into lines
-/// - Strip comments (`#`) and blank lines
-/// - Normalize: remove leading `/` and trailing `/`
-/// - Drop negations (`!`) and wildcard patterns (`*`) — too complex for
-///   simple component-based matching; these are already handled by git itself
-/// - Always include `.git` and `node_modules` as safety nets
-pub fn parse_gitignore(root: &Path) -> Vec<String> {
-    let gitignore_path = root.join(".gitignore");
-
-    let content = match fs::read_to_string(&gitignore_path) {
-        Ok(c) => c,
-        Err(_) => {
-            return FALLBACK_EXCLUDES.iter().map(|s| (*s).to_string()).collect();
-        }
-    };
-
-    let mut seen = HashSet::new();
-    let mut excludes: Vec<String> = Vec::new();
-
-    for raw_line in content.lines() {
-        let line = raw_line.trim();
-
-        // Skip empty lines and comments
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-
-        // Skip negation patterns and wildcard patterns
-        if line.starts_with('!') || line.contains('*') {
-            continue;
-        }
-
-        // Normalize: strip leading `/` and trailing `/`
-        let normalized = line.trim_start_matches('/').trim_end_matches('/');
-
-        if normalized.is_empty() {
-            continue;
-        }
-
-        // Only keep simple names (no path separators) for component matching
-        if !normalized.contains('/') && seen.insert(normalized.to_string()) {
-            excludes.push(normalized.to_string());
-        }
-    }
-
-    // Always ensure these are present
-    for must_have in &[".git", "node_modules"] {
-        if seen.insert((*must_have).to_string()) {
-            excludes.push((*must_have).to_string());
-        }
-    }
-
-    excludes
+/// A compiled gitignore matcher rooted at a project directory.
+pub struct Matcher {
+    gitignore: Gitignore,
+    root: PathBuf,
 }
 
-/// Check whether `path` should be skipped based on its directory components
-/// matching any entry in `excludes`.
-pub fn should_skip_path(path: &Path, excludes: &[String]) -> bool {
-    for component in path.components() {
-        let name = component.as_os_str().to_string_lossy();
-        if excludes.iter().any(|ex| name == *ex) {
-            return true;
+/// Build a [`Matcher`] for `root`.
+///
+/// Loads `root/.gitignore` when present; otherwise seeds the matcher with
+/// [`FALLBACK_EXCLUDES`]. `.git/` and `node_modules/` are always added as
+/// safety nets so they are skipped even if a `.gitignore` omits them.
+#[must_use]
+pub fn load(root: &Path) -> Matcher {
+    let mut builder = GitignoreBuilder::new(root);
+    let gitignore_path = root.join(".gitignore");
+
+    if gitignore_path.exists() {
+        // `add` returns `Some(err)` on failure; a malformed .gitignore is
+        // tolerated (git itself is lenient), so we ignore the error.
+        let _ = builder.add(&gitignore_path);
+    } else {
+        for dir in FALLBACK_EXCLUDES {
+            // Trailing slash → match the directory (and its contents) at any depth.
+            let _ = builder.add_line(None, &format!("{dir}/"));
         }
     }
-    false
+
+    // Safety nets, always present regardless of the .gitignore contents.
+    let _ = builder.add_line(None, ".git/");
+    let _ = builder.add_line(None, "node_modules/");
+
+    Matcher {
+        gitignore: builder.build().unwrap_or_else(|_| Gitignore::empty()),
+        root: root.to_path_buf(),
+    }
+}
+
+impl Matcher {
+    /// Returns `true` if `path` is ignored, checking the path itself and every
+    /// parent directory (so a file inside an ignored directory is skipped) and
+    /// honoring negations. `is_dir` should reflect whether `path` is a directory.
+    #[must_use]
+    pub fn is_ignored(&self, path: &Path, is_dir: bool) -> bool {
+        // Anchor relative paths to the matcher root so the query shares the
+        // builder's basis (matched_path_or_any_parents strips the root prefix).
+        // Absolute paths are used as-is; we deliberately do NOT canonicalize,
+        // since that follows symlinks — gitignore matches by name, not target.
+        let anchored = if path.is_absolute() {
+            std::borrow::Cow::Borrowed(path)
+        } else {
+            std::borrow::Cow::Owned(self.root.join(path))
+        };
+        self.gitignore
+            .matched_path_or_any_parents(anchored.as_ref(), is_dir)
+            .is_ignore()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
     use std::path::PathBuf;
     use tempfile::tempdir;
 
-    #[test]
-    fn test_parse_gitignore_basic() {
-        let dir = tempdir().unwrap();
-        fs::write(
-            dir.path().join(".gitignore"),
-            "# comment\nnode_modules/\ndist\n\n*.log\n!important\ntarget/\n",
-        )
-        .unwrap();
-
-        let excludes = parse_gitignore(dir.path());
-        assert!(excludes.contains(&"node_modules".to_string()));
-        assert!(excludes.contains(&"dist".to_string()));
-        assert!(excludes.contains(&"target".to_string()));
-        assert!(excludes.contains(&".git".to_string())); // always present
-                                                         // Wildcards and negations should be excluded
-        assert!(!excludes.iter().any(|e| e.contains('*')));
-        assert!(!excludes.iter().any(|e| e.starts_with('!')));
+    fn write_gitignore(dir: &Path, contents: &str) {
+        fs::write(dir.join(".gitignore"), contents).unwrap();
     }
 
     #[test]
-    fn test_parse_gitignore_missing_file() {
+    fn wildcard_patterns_are_honored() {
         let dir = tempdir().unwrap();
-        let excludes = parse_gitignore(dir.path());
-        // Should return fallbacks
-        assert!(excludes.contains(&"node_modules".to_string()));
-        assert!(excludes.contains(&".git".to_string()));
-        assert!(excludes.contains(&"dist".to_string()));
+        write_gitignore(dir.path(), "*.log\ngenerated/*.rs\n");
+        let m = load(dir.path());
+
+        assert!(m.is_ignored(&dir.path().join("app.log"), false));
+        assert!(m.is_ignored(&dir.path().join("generated/api.rs"), false));
+        // A real source file is not ignored.
+        assert!(!m.is_ignored(&dir.path().join("src/main.rs"), false));
     }
 
     #[test]
-    fn test_should_skip_path() {
-        let excludes = vec!["node_modules".to_string(), ".git".to_string()];
+    fn negations_re_include_files() {
+        let dir = tempdir().unwrap();
+        write_gitignore(dir.path(), "*.log\n!keep.log\n");
+        let m = load(dir.path());
 
-        assert!(should_skip_path(
-            &PathBuf::from("src/node_modules/foo.js"),
-            &excludes
+        assert!(m.is_ignored(&dir.path().join("noise.log"), false));
+        assert!(
+            !m.is_ignored(&dir.path().join("keep.log"), false),
+            "a `!keep.log` negation must re-include the file"
+        );
+    }
+
+    #[test]
+    fn substring_names_are_not_over_matched() {
+        // The old parser skipped any path *containing* an excluded name; a
+        // `build/` rule must NOT skip `rebuild.rs` or `src/buildings/x.rs`.
+        let dir = tempdir().unwrap();
+        write_gitignore(dir.path(), "build/\n");
+        let m = load(dir.path());
+
+        assert!(m.is_ignored(&dir.path().join("build/out.o"), false));
+        assert!(!m.is_ignored(&dir.path().join("rebuild.rs"), false));
+        assert!(!m.is_ignored(&dir.path().join("src/buildings/plan.rs"), false));
+    }
+
+    #[test]
+    fn files_inside_ignored_dirs_are_skipped() {
+        let dir = tempdir().unwrap();
+        write_gitignore(dir.path(), "target/\n");
+        let m = load(dir.path());
+        assert!(m.is_ignored(&dir.path().join("target/debug/app"), false));
+    }
+
+    #[test]
+    fn relative_paths_are_anchored_to_root() {
+        // A caller passing a path relative to root must still match; is_ignored
+        // anchors it to the matcher root before querying.
+        let dir = tempdir().unwrap();
+        write_gitignore(dir.path(), "target/\n");
+        let m = load(dir.path());
+        assert!(m.is_ignored(Path::new("target/debug/app"), false));
+        assert!(!m.is_ignored(Path::new("src/main.rs"), false));
+    }
+
+    #[test]
+    fn git_dir_is_always_ignored() {
+        let dir = tempdir().unwrap();
+        write_gitignore(dir.path(), "# nothing here\n");
+        let m = load(dir.path());
+        assert!(m.is_ignored(&dir.path().join(".git/config"), false));
+    }
+
+    #[test]
+    fn missing_gitignore_uses_fallbacks() {
+        let dir = tempdir().unwrap();
+        let m = load(dir.path());
+        assert!(m.is_ignored(&dir.path().join("node_modules/react/index.js"), false));
+        assert!(m.is_ignored(&dir.path().join("target/debug/app"), false));
+        assert!(m.is_ignored(&dir.path().join("dist/bundle.js"), false));
+        assert!(!m.is_ignored(&dir.path().join("src/lib.rs"), false));
+    }
+
+    #[test]
+    fn plain_source_file_is_not_ignored() {
+        let dir = tempdir().unwrap();
+        write_gitignore(dir.path(), "target/\n*.tmp\n");
+        let m = load(dir.path());
+        assert!(!m.is_ignored(
+            &PathBuf::from(dir.path()).join("src/commands/mod.rs"),
+            false
         ));
-        assert!(should_skip_path(&PathBuf::from(".git/config"), &excludes));
-        assert!(!should_skip_path(&PathBuf::from("src/main.rs"), &excludes));
-    }
-
-    #[test]
-    fn test_deduplication() {
-        let dir = tempdir().unwrap();
-        fs::write(
-            dir.path().join(".gitignore"),
-            "node_modules\nnode_modules/\nnode_modules\n",
-        )
-        .unwrap();
-
-        let excludes = parse_gitignore(dir.path());
-        let count = excludes.iter().filter(|e| *e == "node_modules").count();
-        assert_eq!(count, 1, "node_modules should appear exactly once");
     }
 }
