@@ -14,7 +14,15 @@
  * limitations under the License.
  */
 
-#![allow(clippy::pedantic)]
+// This crate renders live system metrics — percentages, gauge fills, ratios,
+// p95 latencies — that are inherently lossy int<->float conversions. Allow just
+// those cast lints (with the rest of `pedantic` kept active) instead of the
+// blanket `#![allow(clippy::pedantic)]` that previously masked every lint.
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
+)]
 
 //! # `ResQ` Performance Monitor TUI v2.0
 //!
@@ -576,7 +584,7 @@ fn draw_memory(frame: &mut Frame, app: &App, status: &StatusResponse, area: Rect
     frame.render_widget(gauge, chunks[0]);
 
     // Stats
-    let stats = Paragraph::new(vec![
+    let mem_stats = Paragraph::new(vec![
         Line::from(vec![
             Span::styled("RSS: ", Style::default().fg(Color::DarkGray)),
             Span::styled(format_bytes(mem.rss), Style::default().fg(Color::White)),
@@ -600,7 +608,7 @@ fn draw_memory(frame: &mut Frame, app: &App, status: &StatusResponse, area: Rect
             Span::styled(&status.version, Style::default().fg(Color::Cyan)),
         ]),
     ]);
-    frame.render_widget(stats, chunks[1]);
+    frame.render_widget(mem_stats, chunks[1]);
 
     // Sparkline
     let data: Vec<u64> = app.memory_history.iter().copied().collect();
@@ -917,10 +925,10 @@ struct CliArgs {
 
 impl App {
     /// Handle a key event. Returns `false` to signal exit.
-    fn handle_key(&mut self, key: event::KeyEvent) -> Result<bool> {
+    fn handle_key(&mut self, key: event::KeyEvent) -> bool {
         if key.kind == KeyEventKind::Press {
             match key.code {
-                KeyCode::Char('q') | KeyCode::Esc => return Ok(false),
+                KeyCode::Char('q') | KeyCode::Esc => return false,
                 KeyCode::Char('r') => self.reset(),
                 KeyCode::Char('p') => self.toggle_pause(),
                 KeyCode::Char('+' | '=') => self.increase_refresh_rate(),
@@ -929,7 +937,7 @@ impl App {
                 _ => {}
             }
         }
-        Ok(true)
+        true
     }
 }
 
@@ -959,7 +967,7 @@ fn main() -> Result<()> {
                     {
                         break;
                     }
-                    if !app.handle_key(key)? {
+                    if !app.handle_key(key) {
                         break;
                     }
                 }
