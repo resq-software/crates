@@ -239,7 +239,7 @@ impl App {
         }
 
         let line = matches[self.disasm_match_cursor];
-        self.disassembly_scroll = line.saturating_sub(2) as u16;
+        self.disassembly_scroll = u16::try_from(line.saturating_sub(2)).unwrap_or(u16::MAX);
     }
 
     fn jump_function_match(&mut self, next: bool) {
@@ -328,6 +328,7 @@ impl App {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 pub(crate) fn run_tui(
     reports: Vec<BinaryReport>,
     stats: crate::RunStats,
@@ -406,10 +407,8 @@ pub(crate) fn run_tui(
 
                 match key.code {
                     KeyCode::Char('q') | KeyCode::Esc => break,
-                    KeyCode::Tab => app.focus = app.focus.next(),
-                    KeyCode::BackTab => app.focus = app.focus.previous(),
-                    KeyCode::Left => app.focus = app.focus.previous(),
-                    KeyCode::Right => app.focus = app.focus.next(),
+                    KeyCode::Tab | KeyCode::Right => app.focus = app.focus.next(),
+                    KeyCode::BackTab | KeyCode::Left => app.focus = app.focus.previous(),
                     KeyCode::Char('h') => app.show_help = !app.show_help,
                     KeyCode::Char('/') => {
                         app.input_mode = InputMode::FunctionSearch;
@@ -658,6 +657,7 @@ fn draw_functions(frame: &mut Frame, area: Rect, app: &App) {
     frame.render_stateful_widget(list, area, &mut state);
 }
 
+#[allow(clippy::too_many_lines)]
 fn draw_disassembly(frame: &mut Frame, area: Rect, app: &App) {
     let chunks = Layout::vertical([Constraint::Length(7), Constraint::Min(6)]).split(area);
 
