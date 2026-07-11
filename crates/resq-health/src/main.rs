@@ -78,7 +78,7 @@ impl App {
             services: Vec::new(),
             last_tick: Instant::now(),
             table_state,
-            theme: Theme::default(),
+            theme: Theme::adaptive(),
             show_details: false,
             show_help: false,
             is_updating: false,

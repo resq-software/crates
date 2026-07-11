@@ -20,7 +20,18 @@
 pub use crossterm;
 pub use ratatui;
 
+pub mod console;
+pub mod detect;
+pub mod progress;
+pub mod spinner;
+pub mod table;
 pub mod terminal;
+pub mod theme;
+
+/// The standard `ResQ` TUI [`Theme`] and the [`AdaptiveColor`] primitive, moved
+/// into the [`theme`] module and re-exported here so existing `resq_tui::Theme`
+/// paths keep compiling.
+pub use theme::{AdaptiveColor, Theme};
 
 use ratatui::{
     layout::{Alignment, Constraint, Layout, Rect},
@@ -34,49 +45,9 @@ use ratatui::{
 // UI Theme
 // ---------------------------------------------------------------------------
 
-/// Spinner animation frames for loading indicators.
-pub const SPINNER_FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-
-/// Standard `ResQ` TUI Theme.
-pub struct Theme {
-    /// Primary brand color (Cyan)
-    pub primary: Color,
-    /// Secondary supporting color (Blue)
-    pub secondary: Color,
-    /// Accent color for PID/Metadata (Magenta)
-    pub accent: Color,
-    /// Success state (Green)
-    pub success: Color,
-    /// Warning/Pending state (Yellow)
-    pub warning: Color,
-    /// Error/Critical state (Red)
-    pub error: Color,
-    /// Background color
-    pub bg: Color,
-    /// Foreground text color
-    pub fg: Color,
-    /// Highlight/Selection color
-    pub highlight: Color,
-    /// Inactive/Muted color (`DarkGray`)
-    pub inactive: Color,
-}
-
-impl Default for Theme {
-    fn default() -> Self {
-        Self {
-            primary: Color::Cyan,
-            secondary: Color::Blue,
-            accent: Color::Magenta,
-            success: Color::Green,
-            warning: Color::Yellow,
-            error: Color::Red,
-            bg: Color::Black,
-            fg: Color::White,
-            highlight: Color::Rgb(50, 50, 50),
-            inactive: Color::DarkGray,
-        }
-    }
-}
+/// Spinner animation frames for loading indicators. Re-exported from [`spinner`];
+/// the canonical definition lives there to avoid a second copy.
+pub use spinner::SPINNER_FRAMES;
 
 // ---------------------------------------------------------------------------
 // Shared Widgets

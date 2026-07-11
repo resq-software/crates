@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-//! Centralized theme and adaptive colors for ResQ TUI and CLI output.
+//! Centralized theme and adaptive colors for `ResQ` TUI and CLI output.
 //!
 //! Mirrors the gh-aw `pkg/styles/theme.go` pattern:
 //! - All colors defined as [`AdaptiveColor`] with explicit light and dark
@@ -44,6 +44,7 @@ pub struct AdaptiveColor {
 impl AdaptiveColor {
     /// Resolves to the appropriate color variant based on the detected
     /// terminal color mode. Returns [`Color::Reset`] when color is disabled.
+    #[must_use]
     pub fn resolve(&self) -> Color {
         match detect::detect_color_mode() {
             ColorMode::Dark => self.dark,
@@ -59,87 +60,87 @@ impl AdaptiveColor {
 
 /// Primary brand color (Cyan).
 pub const COLOR_PRIMARY: AdaptiveColor = AdaptiveColor {
-    light: Color::Rgb(0, 139, 139),   // Dark cyan for light bg
-    dark: Color::Rgb(139, 233, 253),   // Dracula cyan
+    light: Color::Rgb(0, 139, 139),  // Dark cyan for light bg
+    dark: Color::Rgb(139, 233, 253), // Dracula cyan
 };
 
 /// Secondary supporting color (Blue/Purple).
 pub const COLOR_SECONDARY: AdaptiveColor = AdaptiveColor {
-    light: Color::Rgb(68, 71, 144),    // Muted blue for light bg
-    dark: Color::Rgb(189, 147, 249),   // Dracula purple
+    light: Color::Rgb(68, 71, 144),  // Muted blue for light bg
+    dark: Color::Rgb(189, 147, 249), // Dracula purple
 };
 
 /// Accent color for metadata (Magenta/Pink).
 pub const COLOR_ACCENT: AdaptiveColor = AdaptiveColor {
-    light: Color::Rgb(163, 55, 136),   // Dark magenta for light bg
-    dark: Color::Rgb(255, 121, 198),   // Dracula pink
+    light: Color::Rgb(163, 55, 136), // Dark magenta for light bg
+    dark: Color::Rgb(255, 121, 198), // Dracula pink
 };
 
 /// Success state (Green).
 pub const COLOR_SUCCESS: AdaptiveColor = AdaptiveColor {
-    light: Color::Rgb(40, 130, 40),    // Dark green for light bg
-    dark: Color::Rgb(80, 250, 123),    // Dracula green
+    light: Color::Rgb(40, 130, 40), // Dark green for light bg
+    dark: Color::Rgb(80, 250, 123), // Dracula green
 };
 
 /// Warning/pending state (Yellow/Orange).
 pub const COLOR_WARNING: AdaptiveColor = AdaptiveColor {
-    light: Color::Rgb(180, 120, 0),    // Dark amber for light bg
-    dark: Color::Rgb(241, 250, 140),   // Dracula yellow
+    light: Color::Rgb(180, 120, 0),  // Dark amber for light bg
+    dark: Color::Rgb(241, 250, 140), // Dracula yellow
 };
 
 /// Error/critical state (Red).
 pub const COLOR_ERROR: AdaptiveColor = AdaptiveColor {
-    light: Color::Rgb(215, 55, 55),    // Dark red for light bg
-    dark: Color::Rgb(255, 85, 85),     // Dracula red
+    light: Color::Rgb(215, 55, 55), // Dark red for light bg
+    dark: Color::Rgb(255, 85, 85),  // Dracula red
 };
 
 /// Foreground text.
 pub const COLOR_FG: AdaptiveColor = AdaptiveColor {
-    light: Color::Rgb(40, 42, 54),     // Dracula bg as fg on light
-    dark: Color::Rgb(248, 248, 242),   // Dracula fg
+    light: Color::Rgb(40, 42, 54),   // Dracula bg as fg on light
+    dark: Color::Rgb(248, 248, 242), // Dracula fg
 };
 
 /// Background.
 pub const COLOR_BG: AdaptiveColor = AdaptiveColor {
-    light: Color::Rgb(248, 248, 242),  // Dracula fg as bg on light
-    dark: Color::Rgb(40, 42, 54),      // Dracula bg
+    light: Color::Rgb(248, 248, 242), // Dracula fg as bg on light
+    dark: Color::Rgb(40, 42, 54),     // Dracula bg
 };
 
 /// Inactive / muted / comment.
 pub const COLOR_INACTIVE: AdaptiveColor = AdaptiveColor {
-    light: Color::Rgb(140, 140, 140),  // Medium gray for light bg
-    dark: Color::Rgb(98, 114, 164),    // Dracula comment
+    light: Color::Rgb(140, 140, 140), // Medium gray for light bg
+    dark: Color::Rgb(98, 114, 164),   // Dracula comment
 };
 
 /// Highlight / selection background.
 pub const COLOR_HIGHLIGHT: AdaptiveColor = AdaptiveColor {
-    light: Color::Rgb(230, 230, 230),  // Light gray selection
-    dark: Color::Rgb(68, 71, 90),      // Dracula current line
+    light: Color::Rgb(230, 230, 230), // Light gray selection
+    dark: Color::Rgb(68, 71, 90),     // Dracula current line
 };
 
 /// Progress bar gradient start.
 pub const COLOR_PROGRESS_START: AdaptiveColor = AdaptiveColor {
-    light: Color::Rgb(100, 60, 180),   // Deeper purple for light bg
-    dark: Color::Rgb(189, 147, 249),   // Dracula purple
+    light: Color::Rgb(100, 60, 180), // Deeper purple for light bg
+    dark: Color::Rgb(189, 147, 249), // Dracula purple
 };
 
 /// Progress bar gradient end.
 pub const COLOR_PROGRESS_END: AdaptiveColor = AdaptiveColor {
-    light: Color::Rgb(0, 139, 139),    // Darker cyan for light bg
-    dark: Color::Rgb(139, 233, 253),   // Dracula cyan
+    light: Color::Rgb(0, 139, 139),  // Darker cyan for light bg
+    dark: Color::Rgb(139, 233, 253), // Dracula cyan
 };
 
 /// Progress bar empty track.
 pub const COLOR_PROGRESS_EMPTY: AdaptiveColor = AdaptiveColor {
-    light: Color::Rgb(200, 200, 200),  // Light gray track
-    dark: Color::Rgb(98, 114, 164),    // Dracula comment
+    light: Color::Rgb(200, 200, 200), // Light gray track
+    dark: Color::Rgb(98, 114, 164),   // Dracula comment
 };
 
 // ---------------------------------------------------------------------------
 // Theme struct (for TUI full-screen apps)
 // ---------------------------------------------------------------------------
 
-/// Standard ResQ TUI Theme with adaptive color support.
+/// Standard `ResQ` TUI Theme with adaptive color support.
 ///
 /// Consumers should call [`Theme::adaptive`] to get colors that match the
 /// detected terminal background, or [`Theme::default`] for the classic
@@ -172,6 +173,7 @@ impl Theme {
     ///
     /// Uses [`AdaptiveColor::resolve`] for every field. This is the
     /// recommended constructor for new code.
+    #[must_use]
     pub fn adaptive() -> Self {
         Self {
             primary: COLOR_PRIMARY.resolve(),

@@ -165,7 +165,7 @@ impl App {
             aborted: false,
             spinner_tick: 0,
             scroll_offset: 0,
-            theme: Theme::default(),
+            theme: Theme::adaptive(),
             prompting_idx: None,
             changeset_selector: 0,
             changeset_message: String::new(),

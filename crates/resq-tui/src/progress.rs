@@ -35,6 +35,7 @@ pub struct ProgressBar {
 
 impl ProgressBar {
     /// Creates a new progress bar with the given width and message.
+    #[must_use]
     pub fn new(message: &str, width: usize) -> Self {
         Self {
             width,
@@ -48,6 +49,14 @@ impl ProgressBar {
     /// In non-TTY or accessible mode, renders a plain ASCII bar.
     pub fn render(&self, fraction: f64) {
         let fraction = fraction.clamp(0.0, 1.0);
+        // fraction is clamped to [0,1] and width is a small bar width, so
+        // `filled` is bounded by `width`; the float<->usize casts cannot overflow
+        // or lose meaningful precision here.
+        #[allow(
+            clippy::cast_precision_loss,
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss
+        )]
         let filled = (self.width as f64 * fraction).round() as usize;
         let empty = self.width - filled;
 
@@ -59,13 +68,12 @@ impl ProgressBar {
             let empty_ansi = color_to_fg(empty_color);
 
             eprint!(
-                "\r{} {}{}{}{}{}  {:.0}%  ",
+                "\r{} {}{}{}{}\x1b[0m  {:.0}%  ",
                 self.message,
                 fill_ansi,
                 "█".repeat(filled),
                 empty_ansi,
                 "░".repeat(empty),
-                "\x1b[0m",
                 fraction * 100.0,
             );
         } else {
@@ -98,7 +106,7 @@ fn color_to_fg(color: ratatui::style::Color) -> String {
     use ratatui::style::Color;
     match color {
         Color::Rgb(r, g, b) => format!("\x1b[38;2;{r};{g};{b}m"),
-        Color::Reset => String::new(),
+        // Reset and every non-RGB color fall back to no ANSI sequence.
         _ => String::new(),
     }
 }
