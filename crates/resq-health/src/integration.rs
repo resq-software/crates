@@ -51,7 +51,7 @@ pub(crate) fn run_test_script(script_path: &str) -> TestResult {
 
     match Command::new("bash").arg(script_path).output() {
         Ok(output) => {
-            let duration_ms = start.elapsed().as_millis() as u64;
+            let duration_ms = u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX);
             let status = if output.status.success() {
                 TestStatus::Passed
             } else {
@@ -72,7 +72,7 @@ pub(crate) fn run_test_script(script_path: &str) -> TestResult {
         Err(e) => TestResult {
             name,
             status: TestStatus::Failed,
-            duration_ms: start.elapsed().as_millis() as u64,
+            duration_ms: u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX),
             output: format!("Failed to execute script: {e}"),
         },
     }
