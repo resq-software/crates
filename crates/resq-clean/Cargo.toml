@@ -27,7 +27,7 @@ name = "resq-clean"
 path = "src/main.rs"
 
 [dependencies]
-ignore = "0.4"
+ignore = { workspace = true }
 walkdir = { workspace = true }
 clap = { workspace = true }
 anyhow = { workspace = true }
