@@ -33,6 +33,7 @@ const ROOT_MARKERS: &[&str] = &[
 
 /// Finds the project root by climbing up the directory tree from the CWD.
 /// Returns the current directory if no root marker is found.
+#[must_use]
 pub fn find_project_root() -> PathBuf {
     let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
 

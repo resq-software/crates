@@ -121,9 +121,7 @@ const CC_PATTERN: &str =
     r"^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?(!)?: .+$";
 
 fn validate_conventional_commit(msg: &str) -> bool {
-    Regex::new(CC_PATTERN)
-        .map(|re| re.is_match(msg.lines().next().unwrap_or("")))
-        .unwrap_or(false)
+    Regex::new(CC_PATTERN).is_ok_and(|re| re.is_match(msg.lines().next().unwrap_or("")))
 }
 
 fn build_prompt(
@@ -336,12 +334,11 @@ pub async fn run(args: CommitArgs) -> Result<()> {
         valid.into_iter().next().unwrap()
     } else {
         let idx = select_candidate(&valid)?;
-        match idx {
-            Some(i) => valid.into_iter().nth(i).unwrap(),
-            None => {
-                eprintln!("Cancelled.");
-                return Ok(());
-            }
+        if let Some(i) = idx {
+            valid.into_iter().nth(i).unwrap()
+        } else {
+            eprintln!("Cancelled.");
+            return Ok(());
         }
     };
 
