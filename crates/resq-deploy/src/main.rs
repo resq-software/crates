@@ -28,6 +28,7 @@ mod k8s;
 
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
+use std::process::ExitCode;
 use std::time::Duration;
 
 use clap::Parser;
@@ -242,7 +243,7 @@ impl TuiApp for App {
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> anyhow::Result<ExitCode> {
     let args = Args::parse();
     let project_root = std::env::current_dir()?
         .ancestors()
@@ -264,7 +265,8 @@ async fn main() -> anyhow::Result<()> {
     app.refresh_status();
 
     let mut guard = terminal::init()?;
-    terminal::run_loop(&mut guard, 50, &mut app)
+    terminal::run_loop(&mut guard, 50, &mut app)?;
+    Ok(ExitCode::SUCCESS)
 }
 
 fn draw_ui(f: &mut Frame, app: &mut App) {
@@ -429,7 +431,7 @@ fn run_non_interactive(
     action: &str,
     service: Option<&str>,
     use_k8s: bool,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<ExitCode> {
     let (tx, rx) = mpsc::unbounded_channel::<String>();
     if use_k8s {
         k8s::run_action(project_root, env, action, service, tx).map_err(|e| anyhow::anyhow!(e))?;
@@ -438,13 +440,20 @@ fn run_non_interactive(
             .map_err(|e| anyhow::anyhow!(e))?;
     }
     let rt_rx = std::sync::Mutex::new(rx);
+    // Default to failure: if the stream disconnects before we see a terminating
+    // "--- Process ---" marker, the child status is unknown and we must not
+    // report success. A clean exit (code 0) is only signalled explicitly.
+    let mut exit_code = ExitCode::FAILURE;
     loop {
         #[allow(clippy::expect_used)]
         let mut guard = rt_rx.lock().expect("Lock should not be poisoned");
         match guard.try_recv() {
             Ok(line) => {
                 println!("{line}");
-                if line.starts_with("--- Process") {
+                if let Some(code) = parse_exit_code(&line) {
+                    // Propagate the child's real exit status instead of always
+                    // returning Ok(()) — a failed deploy must exit non-zero.
+                    exit_code = ExitCode::from(code);
                     break;
                 }
             }
@@ -455,5 +464,67 @@ fn run_non_interactive(
             Err(mpsc::error::TryRecvError::Disconnected) => break,
         }
     }
-    Ok(())
+    Ok(exit_code)
+}
+
+/// Parse the child exit status out of a worker's terminating marker line.
+///
+/// The docker/k8s workers emit `--- Process exited with N ---` on completion and
+/// `--- Process error: ... ---` on spawn/wait failure. Returns `Some(code)` for
+/// either marker (`code` clamped to a non-zero `u8` on any failure, `0` only on a
+/// clean exit), or `None` for ordinary log output that must not stop the loop.
+fn parse_exit_code(line: &str) -> Option<u8> {
+    let rest = line.strip_prefix("--- Process")?;
+    if let Some(tail) = rest.trim_start().strip_prefix("exited with") {
+        let raw = tail.trim().trim_end_matches("---").trim();
+        return Some(match raw.parse::<i64>() {
+            Ok(0) => 0,
+            // Non-zero, negative (signal → code() was None → -1), or unparseable
+            // all map to a non-zero code; preserve it when it fits in a u8.
+            Ok(n) => u8::try_from(n).unwrap_or(1).max(1),
+            Err(_) => 1,
+        });
+    }
+    // "--- Process error: ... ---" (or any other Process marker) = failure.
+    Some(1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_exit_code;
+
+    #[test]
+    fn clean_exit_is_zero() {
+        assert_eq!(parse_exit_code("--- Process exited with 0 ---"), Some(0));
+    }
+
+    #[test]
+    fn nonzero_exit_is_propagated() {
+        assert_eq!(parse_exit_code("--- Process exited with 1 ---"), Some(1));
+        assert_eq!(
+            parse_exit_code("--- Process exited with 137 ---"),
+            Some(137)
+        );
+    }
+
+    #[test]
+    fn signal_death_minus_one_is_failure() {
+        // status.code() is None on a signal → worker prints -1 → must be non-zero.
+        assert_eq!(parse_exit_code("--- Process exited with -1 ---"), Some(1));
+    }
+
+    #[test]
+    fn spawn_error_marker_is_failure() {
+        assert_eq!(
+            parse_exit_code("--- Process error: No such file or directory ---"),
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn ordinary_output_does_not_terminate() {
+        assert_eq!(parse_exit_code("api-gateway  | listening on :8080"), None);
+        assert_eq!(parse_exit_code("=== docker compose up ==="), None);
+        assert_eq!(parse_exit_code(""), None);
+    }
 }

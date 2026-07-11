@@ -113,10 +113,22 @@ pub fn load_config() -> Result<AiConfig> {
         );
     }
 
-    let base_url = env::var("RESQ_AI_BASE_URL")
-        .ok()
-        .or(project_cfg.base_url)
-        .or(home_cfg.base_url);
+    // SECURITY: base_url decides where the credentialed request (and thus the API
+    // key) is sent, so it must come only from trusted sources — the environment or
+    // the user's home config. The project-local .resq/ai.toml is discovered by
+    // walking CWD ancestors, so it is attacker-controlled whenever a user runs an
+    // AI command inside a cloned untrusted repo; honoring its base_url would let
+    // that repo redirect ANTHROPIC_API_KEY to any HTTPS host. It is therefore not
+    // even passed to resolve_trusted_base_url; we only note that one was present
+    // so we can warn the user it was ignored.
+    let project_base_url_ignored = project_cfg.base_url.is_some();
+    let base_url = resolve_trusted_base_url(env::var("RESQ_AI_BASE_URL").ok(), home_cfg.base_url);
+    if project_base_url_ignored {
+        eprintln!(
+            "Warning: ignoring `base_url` from project-local .resq/ai.toml for security. \
+             Set it via RESQ_AI_BASE_URL or ~/.resq/ai.toml (trusted sources only)."
+        );
+    }
 
     if let Some(ref url_str) = base_url {
         let parsed = reqwest::Url::parse(url_str)
@@ -147,6 +159,15 @@ pub fn load_config() -> Result<AiConfig> {
         max_tokens,
         timeout_secs,
     })
+}
+
+/// Resolve the effective `base_url` from trusted sources only, in precedence
+/// order env > home. The project-local value is intentionally not a parameter:
+/// it is attacker-controlled (discovered by walking CWD) and must never be able
+/// to route the API key, so it cannot participate in this resolution at all.
+/// Pure and side-effect free for testability.
+fn resolve_trusted_base_url(env_val: Option<String>, home_val: Option<String>) -> Option<String> {
+    env_val.or(home_val)
 }
 
 fn home_config_path() -> Option<PathBuf> {
@@ -275,6 +296,29 @@ mod tests {
                 None => env::remove_var(k),
             }
         }
+    }
+
+    #[test]
+    fn resolver_uses_only_env_and_home() {
+        // The core exfiltration fix: the resolver takes no project-local input, so
+        // an attacker-controlled project base_url cannot possibly route the key.
+        // With no trusted source set, the endpoint stays the provider default.
+        assert_eq!(resolve_trusted_base_url(None, None), None);
+    }
+
+    #[test]
+    fn env_base_url_wins_over_home() {
+        let resolved = resolve_trusted_base_url(
+            Some("https://env.example.com".to_string()),
+            Some("https://home.example.com".to_string()),
+        );
+        assert_eq!(resolved.as_deref(), Some("https://env.example.com"));
+    }
+
+    #[test]
+    fn home_base_url_used_when_env_absent() {
+        let resolved = resolve_trusted_base_url(None, Some("https://home.example.com".to_string()));
+        assert_eq!(resolved.as_deref(), Some("https://home.example.com"));
     }
 
     #[test]

@@ -459,13 +459,23 @@ impl CapstoneDisassembler {
             if offset >= region.data.len() {
                 return None;
             }
-            let end = if size_hint > 0 {
-                (offset + size_hint).min(region.data.len())
-            } else {
-                region.data.len()
-            };
+            let end = slice_end(offset, size_hint, region.data.len());
             Some(&region.data[offset..end])
         })
+    }
+}
+
+/// Exclusive end index for a code slice starting at `offset`, clamped to
+/// `data_len`. `saturating_add` is essential: `size_hint` is an attacker-
+/// controlled symbol size (`st_size`) from an untrusted binary, and `offset +
+/// size_hint` would overflow `usize` (wrapping in release, where the workspace
+/// sets no overflow-checks) to yield an `end < offset` and panic the slice.
+/// Callers guarantee `offset < data_len`.
+fn slice_end(offset: usize, size_hint: usize, data_len: usize) -> usize {
+    if size_hint > 0 {
+        offset.saturating_add(size_hint).min(data_len)
+    } else {
+        data_len
     }
 }
 
@@ -779,6 +789,20 @@ fn map_blocks_to_functions(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn slice_end_saturates_on_attacker_controlled_size() {
+        // A symbol claiming st_size == usize::MAX must clamp to data_len, not
+        // overflow to a value below `offset` (which panics the slice).
+        assert_eq!(slice_end(4, usize::MAX, 100), 100);
+        assert_eq!(slice_end(0, usize::MAX, 100), 100);
+        // Normal in-range case is unchanged.
+        assert_eq!(slice_end(4, 8, 100), 12);
+        // size_hint 0 means "to end of region".
+        assert_eq!(slice_end(4, 0, 100), 100);
+        // size_hint that fits exactly.
+        assert_eq!(slice_end(90, 10, 100), 100);
+    }
 
     #[test]
     fn analyzes_current_executable_metadata() {

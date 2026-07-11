@@ -903,16 +903,19 @@ pub async fn run(args: SecretsArgs) -> Result<()> {
 
 fn redact_line(line: &str) -> String {
     let trimmed = line.trim();
-    if trimmed.len() <= 20 {
+    // Measure and slice by chars, never bytes: a matched line can contain
+    // arbitrary UTF-8 (a trailing `€`, CJK, emoji), and byte-offset slicing at a
+    // multibyte boundary panics inside the parallel scan. For ASCII input (the
+    // common case) char count equals byte length, so behaviour is unchanged.
+    let char_count = trimmed.chars().count();
+    if char_count <= 20 {
         return trimmed.to_string();
     }
-    let visible_prefix = 10.min(trimmed.len() / 4);
-    let visible_suffix = 6.min(trimmed.len() / 6);
-    format!(
-        "{}...REDACTED...{}",
-        &trimmed[..visible_prefix],
-        &trimmed[trimmed.len() - visible_suffix..]
-    )
+    let visible_prefix = 10.min(char_count / 4);
+    let visible_suffix = 6.min(char_count / 6);
+    let prefix: String = trimmed.chars().take(visible_prefix).collect();
+    let suffix: String = trimmed.chars().skip(char_count - visible_suffix).collect();
+    format!("{prefix}...REDACTED...{suffix}")
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -1208,5 +1211,25 @@ mod tests {
         let result = redact_line(line);
         assert!(result.contains("REDACTED"));
         assert!(result.len() < line.len());
+    }
+
+    #[test]
+    fn redact_multibyte_line_does_not_panic() {
+        // A long line whose byte offsets for prefix/suffix land mid-codepoint.
+        // Byte slicing panicked here; char slicing must not.
+        let line = "配置_secret_key = 'très_long_valeur_secrète_€_日本語_🔑'";
+        let result = redact_line(line);
+        assert!(result.contains("REDACTED"));
+        // Output must be valid UTF-8 (guaranteed by String) and shorter char-wise.
+        assert!(result.chars().count() < line.chars().count());
+    }
+
+    #[test]
+    fn redact_multibyte_boundary_prefix_and_suffix() {
+        // Suffix cut point falls exactly on a multibyte char; must stay whole.
+        let line = "0123456789ABCDEFGHIJ_last_chars_are_€€€€€€";
+        let result = redact_line(line);
+        assert!(result.starts_with("0123456789"));
+        assert!(result.ends_with("€€€€€€"));
     }
 }

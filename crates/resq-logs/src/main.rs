@@ -402,10 +402,14 @@ fn service_color(name: &str) -> Color {
 }
 
 fn truncate_svc(name: &str, max: usize) -> String {
-    if name.len() <= max {
+    // Count/slice by chars: a service name comes from log content (JSON field,
+    // container name, RUST_LOG module) and can be multibyte. Byte slicing at
+    // `max - 1` panicked mid-codepoint; `saturating_sub` also guards `max == 0`.
+    if name.chars().count() <= max {
         name.to_string()
     } else {
-        format!("{}…", &name[..max - 1])
+        let prefix: String = name.chars().take(max.saturating_sub(1)).collect();
+        format!("{prefix}…")
     }
 }
 
@@ -425,6 +429,18 @@ mod tests {
     #[test]
     fn truncate_short_name_unchanged() {
         assert_eq!(truncate_svc("api", 10), "api");
+    }
+
+    #[test]
+    fn truncate_multibyte_name_does_not_panic() {
+        // Byte offset `max - 1` lands mid-codepoint on these; must not panic and
+        // must not split a char. Each `€`/CJK char counts as one.
+        assert_eq!(truncate_svc("€€€€€€€€", 4), "€€€…");
+        assert_eq!(truncate_svc("日本語サービス名", 4), "日本語…");
+        // Boundary: name exactly `max` chars is returned whole.
+        assert_eq!(truncate_svc("€€€€", 4), "€€€€");
+        // max == 0 must not underflow-panic.
+        assert_eq!(truncate_svc("api", 0), "…");
     }
 
     fn make_entry(service: &str, level: LogLevel, msg: &str) -> LogEntry {

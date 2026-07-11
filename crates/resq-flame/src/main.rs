@@ -161,8 +161,13 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     if cli.command.is_some() {
-        println!("Subcommand mode not yet fully integrated with new TUI.");
-        return Ok(());
+        // The subcommand profiling path is not implemented. Fail loudly (non-zero
+        // exit) rather than returning Ok(()) — an exit-0 no-op makes automation
+        // and CI believe a profile was produced when nothing ran.
+        anyhow::bail!(
+            "subcommand mode is not yet implemented — no profiling ran and no output was written. \
+             resq-flame is pre-release; do not depend on this path yet."
+        );
     }
 
     let mut app = App::new(cli.output.clone());
@@ -172,12 +177,16 @@ async fn main() -> anyhow::Result<()> {
 
     if let Some(idx) = app.selected_target {
         let target = &app.services[idx];
-        println!(
-            "Starting profiling for: {} (engine: {})",
-            target.name, target.cmd_type
+        // The backend dispatch (inferno/py-spy/perf) is not implemented yet, so
+        // no SVG is generated. Bail instead of printing a success-looking message
+        // and exiting 0 with no file at cli.output.
+        anyhow::bail!(
+            "profiling for {} (engine: {}) is not yet implemented — no flame graph was written to {}. \
+             resq-flame is pre-release; the backend dispatch is still a TODO.",
+            target.name,
+            target.cmd_type,
+            cli.output.display()
         );
-        println!("Output: {}", cli.output.display());
-        // TODO: dispatch to the appropriate profiling backend based on target.cmd_type
     }
 
     Ok(())
