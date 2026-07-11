@@ -33,18 +33,48 @@ jobs:
       run-coverage: true
     secrets: inherit # zizmor: ignore[secrets-inherit] — org-internal reusable workflow
 
+  # Guards resq-dsa's headline invariant: zero-dep + no_std. The org reusable
+  # rust-ci workflow only builds with std, so an accidental `use std::` or a
+  # float method that needs libm would merge green and silently break the crate's
+  # value proposition, surfacing only at `cargo publish` or in an embedded
+  # consumer. Both checks are `cargo check` (fast, no linking): the host build
+  # catches std usage; the bare-metal target proves true core+alloc portability.
+  no-std:
+    name: resq-dsa no_std
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Install Rust + bare-metal target
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # master
+        with:
+          toolchain: stable
+          targets: thumbv7em-none-eabi
+      - name: resq-dsa compiles without std (host)
+        run: cargo check -p resq-dsa --no-default-features
+      - name: resq-dsa compiles for bare-metal (core + alloc only)
+        run: cargo check -p resq-dsa --no-default-features --target thumbv7em-none-eabi
+
   required:
     name: required
     runs-on: ubuntu-latest
-    needs: [rust]
+    needs: [rust, no-std]
     if: always()
     steps:
       - name: Aggregate
         env:
           RUST_RESULT: ${{ needs.rust.result }}
+          NO_STD_RESULT: ${{ needs.no-std.result }}
         run: |
           set -eu
-          case "$RUST_RESULT" in
-            success|skipped|"") echo "ok: rust=$RUST_RESULT" ;;
-            *) echo "::error::rust reusable returned: $RUST_RESULT"; exit 1 ;;
-          esac
+          fail=0
+          for pair in "rust=$RUST_RESULT" "no-std=$NO_STD_RESULT"; do
+            name="${pair%%=*}"
+            res="${pair#*=}"
+            case "$res" in
+              success|skipped|"") echo "ok: $pair" ;;
+              *) echo "::error::$name returned: $res"; fail=1 ;;
+            esac
+          done
+          exit "$fail"
