@@ -19,6 +19,7 @@ use anyhow::{Context, Result};
 use bin_explorer::analysis::{AnalyzeOptions, BinaryReport};
 use crc32fast::Hasher;
 use serde::{Deserialize, Serialize};
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
@@ -99,18 +100,23 @@ fn cache_key(path: &Path, options: &AnalyzeOptions) -> Result<String> {
 
     if let Ok(modified) = metadata.modified() {
         if let Ok(duration) = modified.duration_since(UNIX_EPOCH) {
-            fingerprint.push_str(&format!(
+            let _ = write!(
+                fingerprint,
                 "|mtime={}.{}",
                 duration.as_secs(),
                 duration.subsec_nanos()
-            ));
+            );
         }
     } else {
         let bytes = std::fs::read(path)
             .with_context(|| format!("failed to read {} for cache key hash", path.display()))?;
         let mut content_hasher = Hasher::new();
         content_hasher.update(&bytes);
-        fingerprint.push_str(&format!("|content_crc={:08x}", content_hasher.finalize()));
+        let _ = write!(
+            fingerprint,
+            "|content_crc={:08x}",
+            content_hasher.finalize()
+        );
     }
 
     let mut key_hasher = Hasher::new();

@@ -16,7 +16,6 @@
 
 //! Bin-Explorer CLI and TUI.
 
-#![allow(clippy::pedantic)]
 #![deny(missing_docs)]
 
 mod cache;
@@ -32,6 +31,9 @@ use std::path::{Path, PathBuf};
 /// Analyze machine-level metadata and disassembly for binaries.
 #[derive(Debug, Parser)]
 #[command(name = "resq-bin", version, about)]
+// CLI flags are independent boolean toggles; a struct of bools is the natural
+// shape for clap derive here.
+#[allow(clippy::struct_excessive_bools)]
 struct Args {
     /// Analyze a single binary.
     #[arg(long, conflicts_with = "dir")]

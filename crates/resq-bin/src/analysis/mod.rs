@@ -168,6 +168,11 @@ pub struct BinaryAnalyzer;
 
 impl BinaryAnalyzer {
     /// Analyze a binary file and return a normalized report.
+    ///
+    /// # Errors
+    /// Returns an error if the file cannot be read or its object format cannot
+    /// be parsed by the `object` crate.
+    #[allow(clippy::too_many_lines)]
     pub fn analyze_path(path: &Path, options: &AnalyzeOptions) -> Result<BinaryReport> {
         let bytes = fs::read(path).with_context(|| format!("failed to read {}", path.display()))?;
         let object = object::File::parse(bytes.as_slice())
@@ -455,7 +460,7 @@ impl CapstoneDisassembler {
 
     fn slice_for_address(&self, address: u64, size_hint: usize) -> Option<&[u8]> {
         self.regions.iter().find_map(|region| {
-            let offset = address.checked_sub(region.start)? as usize;
+            let offset = usize::try_from(address.checked_sub(region.start)?).ok()?;
             if offset >= region.data.len() {
                 return None;
             }
@@ -501,13 +506,15 @@ impl Disassembler for CapstoneDisassembler {
                 .find(|f| f.address > function.address)
                 .map(|f| f.address);
 
-            let size_hint = if function.size > 0 {
-                function.size as usize
+            let size_hint_bytes = if function.size > 0 {
+                function.size
             } else {
                 next_addr
                     .and_then(|next| next.checked_sub(function.address))
-                    .unwrap_or(64) as usize
+                    .unwrap_or(64)
             };
+            // Saturate on 32-bit targets; slice_for_address bounds it to the region.
+            let size_hint = usize::try_from(size_hint_bytes).unwrap_or(usize::MAX);
 
             let Some(code) = self.slice_for_address(function.address, size_hint.max(1)) else {
                 continue;
