@@ -89,20 +89,18 @@ fn audit() -> Result<HookAudit> {
     let root = crate::utils::find_project_root();
     let hooks_dir = root.join(".git-hooks");
 
-    let hooks_path_set = read_hooks_path(&root)
-        .map(|p| p.trim() == ".git-hooks")
-        .unwrap_or(false);
+    let hooks_path_set = read_hooks_path(&root).is_some_and(|p| p.trim() == ".git-hooks");
 
     let mut canonical = Vec::with_capacity(HOOK_TEMPLATES.len());
     for (name, body) in HOOK_TEMPLATES {
         let installed = hooks_dir.join(name);
-        let status = if !installed.exists() {
-            HookStatus::Missing
-        } else {
+        let status = if installed.exists() {
             match std::fs::read_to_string(&installed) {
                 Ok(content) if content == *body => HookStatus::Match,
                 _ => HookStatus::Drift,
             }
+        } else {
+            HookStatus::Missing
         };
         canonical.push(((*name).to_string(), status));
     }

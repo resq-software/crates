@@ -478,8 +478,7 @@ fn has_cmd(cmd: &str) -> bool {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+        .is_ok_and(|s| s.success())
 }
 
 fn self_exe() -> PathBuf {
@@ -502,8 +501,7 @@ fn step_copyright(root: &Path) -> StepResult {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
+        .is_ok_and(|s| s.success());
     if !ok {
         return StepResult {
             status: StepStatus::Fail,
@@ -521,8 +519,7 @@ fn step_copyright(root: &Path) -> StepResult {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
+        .is_ok_and(|s| s.success());
     StepResult {
         status: if ok {
             StepStatus::Pass
@@ -619,8 +616,7 @@ fn step_secrets() -> StepResult {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
+        .is_ok_and(|s| s.success());
     StepResult {
         status: if ok {
             StepStatus::Pass
@@ -706,8 +702,10 @@ where
         };
     }
     match formatter(root, &files, false) {
-        Ok(crate::commands::format::FormatOutcome::Clean)
-        | Ok(crate::commands::format::FormatOutcome::Formatted) => {
+        Ok(
+            crate::commands::format::FormatOutcome::Clean
+            | crate::commands::format::FormatOutcome::Formatted,
+        ) => {
             restage(&files);
             StepResult {
                 status: StepStatus::Pass,

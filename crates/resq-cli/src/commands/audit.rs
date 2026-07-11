@@ -177,7 +177,7 @@ fn run_osv_scanner(root: &Path, args: &AuditArgs, failures: &mut Vec<String>) {
                     }
                 }
             }
-            child.wait().map(|s| s.success()).unwrap_or(false)
+            child.wait().is_ok_and(|s| s.success())
         }
     };
 
@@ -199,8 +199,7 @@ fn bun_available() -> bool {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+        .is_ok_and(|s| s.success())
 }
 
 /// Runs `audit-ci` against the root and every npm workspace package.
@@ -252,8 +251,7 @@ fn run_npm_audit(root: &Path, args: &AuditArgs, failures: &mut Vec<String>) -> R
                 .stdout(yarn_lock_file)
                 .current_dir(&dir)
                 .status()
-                .map(|s| s.success())
-                .unwrap_or(false);
+                .is_ok_and(|s| s.success());
 
             if !ok {
                 println!("  ❌ yarn.lock generation failed.");
@@ -273,8 +271,7 @@ fn run_npm_audit(root: &Path, args: &AuditArgs, failures: &mut Vec<String>) -> R
             .args(["--report-type", &args.report_type])
             .current_dir(&dir)
             .status()
-            .map(|s| s.success())
-            .unwrap_or(false);
+            .is_ok_and(|s| s.success());
 
         if ok {
             println!("  ✅ Passed.");
