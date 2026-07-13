@@ -73,8 +73,20 @@ Total reclaimed: 45.5 MB
 
 | Key | Action |
 |-----|--------|
-| `↑`/`↓` | Navigate file list |
-| `Space` | Toggle selection |
-| `Enter` | Delete selected items |
-| `a` | Select/deselect all |
-| `q` | Quit without deleting |
+| `↑`/`↓` or `k`/`j` | Navigate file list |
+| `Space` | Toggle selection on the highlighted entry |
+| `Enter` | Delete all selected items (no-op in `--dry-run`) |
+| `q` / `Esc` | Quit without deleting |
+
+After a delete pass the header shows a status line — `Deleted N item(s)` on success, or the first failure (e.g. a permission error) if any removal failed. Errors are surfaced, never silently swallowed.
+
+## Safety: files resq-clean refuses to delete
+
+`create_mess.sh` also plants gitignored files that resq-clean **preserves**, so you can confirm the guardrails:
+
+| Path | Why it survives |
+|------|-----------------|
+| `.env`, `.env.local` | Protected by name — never offered for deletion even though gitignored (`resq-clean` treats `.env` and `.env.*` as off-limits). |
+| `important/keep.log` | A nested `important/.gitignore` re-includes it with `!keep.log`; the negation is honored, so it is not listed. |
+
+`important/debug.log` (matched by the root `*.log`, not re-included) **is** offered for deletion — so you can see the negation applied to just one file in the directory. Nested directories that are fully collected (e.g. `target/`) are listed once, at the top level, rather than repeating every file inside them.

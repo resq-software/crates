@@ -39,16 +39,35 @@ xdg-open flamegraph.svg  # Linux
 **Method B: resq-flame TUI**
 
 ```bash
-# Launch the TUI and select a profiling target
+# Launch the TUI, highlight a target, press Enter to profile it.
 cargo run -p resq-flame
 ```
 
-**Method C: resq-flame HCE subcommand (for Node.js services)**
+The **`Coordination HCE`** target is the implemented engine — selecting it runs the
+same HCE profile as Method C. The `api` / `python` / `perf` targets are not wired
+up yet and exit with a clear "not yet implemented" message rather than pretending
+to succeed.
+
+**Method C: resq-flame HCE subcommand (profiles the coordination-hce service)**
+
+`resq-flame hce` POSTs to the service's `/admin/cpu-profile`, folds the returned
+V8 CPU profile into stack-collapse format, and writes an interactive SVG. It needs
+a credential and a service under load during the sampling window.
 
 ```bash
-# If you have the docker-compose services running (from resq-deploy example):
+# Admin routes require auth: set a Bearer JWT *or* an x-api-key.
+export RESQ_TOKEN="<a valid bearer JWT>"      # preferred
+# export RESQ_API_KEY="<an x-api-key>"        # alternative
+
+# With a coordination-hce service running, drive traffic against it in another
+# terminal, then:
 cargo run -p resq-flame -- hce --url http://localhost:5000 --duration 5000 --open
 ```
+
+Without `RESQ_TOKEN` or `RESQ_API_KEY` the command exits with
+`no HCE credentials — set RESQ_TOKEN (a Bearer JWT) or RESQ_API_KEY (an x-api-key)`.
+If the service is idle during the window the profile has no samples and the command
+tells you to generate load and retry — it never writes an empty flame graph.
 
 ### What you'll see in the flame graph
 

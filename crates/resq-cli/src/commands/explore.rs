@@ -31,36 +31,6 @@ pub struct ExploreArgs {
     pub refresh_ms: u64,
 }
 
-/// Arguments for the 'logs' (resq-logs) command
-#[derive(Parser, Debug)]
-pub struct LogsArgs {
-    /// Log source: "docker" or "file"
-    #[arg(long, default_value = "docker")]
-    pub source: String,
-    /// Filter to a specific service name
-    #[arg(long)]
-    pub service: Option<String>,
-}
-
-/// Arguments for the 'health' (resq-health) command
-#[derive(Parser, Debug)]
-pub struct HealthArgs {
-    /// Poll interval in seconds
-    #[arg(short, long, default_value_t = 5)]
-    pub interval: u64,
-}
-
-/// Arguments for the 'deploy' (resq-deploy) command
-#[derive(Parser, Debug)]
-pub struct DeployArgs {
-    /// Target environment: dev, staging, prod
-    #[arg(long, default_value = "dev")]
-    pub env: String,
-    /// Use Kubernetes instead of Docker Compose
-    #[arg(long)]
-    pub k8s: bool,
-}
-
 /// Arguments for the 'clean' (resq-clean) command
 #[derive(Parser, Debug)]
 pub struct CleanArgs {
@@ -116,30 +86,6 @@ pub async fn run_explore(args: ExploreArgs) -> Result<()> {
         "resq-perf",
         &[&args.url, "--refresh-ms", &args.refresh_ms.to_string()],
     )
-}
-
-/// Run resq-logs (Log Explorer)
-pub async fn run_logs(args: LogsArgs) -> Result<()> {
-    let mut cmd_args = vec!["--source", &args.source];
-    if let Some(ref s) = args.service {
-        cmd_args.push("--service");
-        cmd_args.push(s);
-    }
-    run_tool("resq-logs", &cmd_args)
-}
-
-/// Run resq-health (Health Explorer)
-pub async fn run_health(args: HealthArgs) -> Result<()> {
-    run_tool("resq-health", &["--interval", &args.interval.to_string()])
-}
-
-/// Run resq-deploy (Deploy Explorer)
-pub async fn run_deploy(args: DeployArgs) -> Result<()> {
-    let mut cmd_args = vec!["--env", &args.env];
-    if args.k8s {
-        cmd_args.push("--k8s");
-    }
-    run_tool("resq-deploy", &cmd_args)
 }
 
 /// Run resq-clean (Workspace Cleaner)
