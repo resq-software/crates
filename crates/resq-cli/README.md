@@ -51,9 +51,6 @@ graph TD
     resq --> docs["docs"]
 
     resq --> explore["explore (resq-perf)"]
-    resq --> logs["logs (resq-logs)"]
-    resq --> health["health (resq-health)"]
-    resq --> deploy["deploy (resq-deploy)"]
     resq --> clean["clean (resq-clean)"]
     resq --> asm["asm (resq-bin)"]
 
@@ -491,41 +488,6 @@ These commands launch standalone TUI applications from the ResQ workspace. Each 
 ```bash
 resq explore
 resq explore http://localhost:8080/status --refresh-ms 1000
-```
-
-#### `logs` -- Log Aggregator (resq-logs)
-
-| Flag / Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `--source <SOURCE>` | `String` | `docker` | Log source: `docker` or `file` |
-| `--service <NAME>` | `String` | none | Filter to a specific service name |
-
-```bash
-resq logs
-resq logs --source file --service edge-aeai
-```
-
-#### `health` -- Health Dashboard (resq-health)
-
-| Flag / Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `-i, --interval <SECS>` | `u64` | `5` | Poll interval in seconds |
-
-```bash
-resq health
-resq health --interval 10
-```
-
-#### `deploy` -- Deployment Manager (resq-deploy)
-
-| Flag / Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `--env <ENV>` | `String` | `dev` | Target environment: `dev`, `staging`, `prod` |
-| `--k8s` | `bool` | `false` | Use Kubernetes instead of Docker Compose |
-
-```bash
-resq deploy
-resq deploy --env staging --k8s
 ```
 
 #### `clean` -- Workspace Cleaner (resq-clean)

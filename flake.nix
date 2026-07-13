@@ -78,7 +78,7 @@
             version_check cargo  "Cargo"
             version_check clippy-driver "Clippy"
 
-            echo "Workspace members: resq, resq-deploy, resq-health, resq-logs, resq-perf, resq-flame, resq-tui, bin_explorer, resq-clean"
+            echo "Workspace members: resq, resq-perf, resq-flame, resq-bin, resq-clean, resq-tui, resq-dsa, resq-ai"
             echo "Build all:  cargo build --release --workspace"
             echo "Watch:      cargo watch -x check"
             echo "Test:       cargo nextest run"

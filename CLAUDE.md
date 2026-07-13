@@ -10,10 +10,7 @@ All crates live under the `crates/` directory:
 - `crates/resq-tui/` — Shared component library for all TUI tools.
 - `crates/resq-bin/` — Machine code and binary analyzer (`resq-bin`).
 - `crates/resq-clean/` — Workspace cleaner (`resq-clean`).
-- `crates/resq-deploy/` — Environment manager (`resq-deploy`).
 - `crates/resq-flame/` — CPU profiler (`resq-flame`).
-- `crates/resq-health/` — Service health monitor (`resq-health`).
-- `crates/resq-logs/` — Log aggregator (`resq-logs`).
 - `crates/resq-perf/` — Performance dashboard (`resq-perf`).
 
 ## Shared Standards
