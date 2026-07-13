@@ -39,7 +39,6 @@ Each tool example includes **runnable demo infrastructure** — mock servers, sa
 - Rust toolchain (latest stable): `rustup update stable`
 - Build all tools: `cargo build --release`
 - Python 3 (for mock servers)
-- Docker (for `resq-deploy` example)
 - GCC (for `resq-bin` example)
 
 ### Tool Examples
@@ -49,8 +48,5 @@ Each tool example includes **runnable demo infrastructure** — mock servers, sa
 | [resq-cli](resq-cli/) | Sample project with missing headers + planted fake secrets | `resq copyright`, `resq secrets` |
 | [resq-bin](resq-bin/) | C program to compile and analyze | `./run_demo.sh` |
 | [resq-clean](resq-clean/) | Script that creates a messy workspace | `./create_mess.sh` then `resq-clean` |
-| [resq-deploy](resq-deploy/) | Docker Compose with 4 mock services | `docker compose up`, then `resq-deploy` |
 | [resq-flame](resq-flame/) | CPU-intensive Python workload | `python3 cpu_burner.py` then profile |
-| [resq-health](resq-health/) | 5 mock HTTP services (Python) | `python3 mock_services.py` then `resq-health` |
-| [resq-logs](resq-logs/) | Pre-generated log files in 3 formats | `resq-logs --source file --path sample-logs/` |
 | [resq-perf](resq-perf/) | Mock `/status` endpoint with changing metrics | `python3 mock_status_server.py` then `resq-perf` |

@@ -23,7 +23,7 @@ Shared TUI component library for all **ResQ** developer tools. Provides a unifie
 
 ## Overview
 
-`resq-tui` ensures every ResQ tool (`resq-logs`, `resq-perf`, `resq-flame`, `resq-health`, etc.) shares a consistent visual identity and interaction model. It provides two tiers of output:
+`resq-tui` ensures every ResQ tool (`resq-perf`, `resq-flame`, `resq-bin`, `resq-clean`, etc.) shares a consistent visual identity and interaction model. It provides two tiers of output:
 
 - **Full-screen TUI** -- Ratatui-based widgets (header, footer, tabs, popups) with a standardized theme for interactive terminal applications.
 - **Non-TUI CLI** -- Styled console formatters, tables, progress bars, and spinners for traditional command-line output that gracefully degrade when piped or redirected.
@@ -56,18 +56,14 @@ graph TD
     LIB --> THEME
 
     subgraph Consumers
-        LOGS["resq-logs"]
         PERF["resq-perf"]
         FLAME["resq-flame"]
-        HEALTH["resq-health"]
         BIN["resq-bin"]
         CLEAN["resq-clean"]
     end
 
-    LOGS --> LIB
     PERF --> LIB
     FLAME --> LIB
-    HEALTH --> LIB
     BIN --> LIB
     CLEAN --> LIB
 ```
