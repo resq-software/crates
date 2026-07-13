@@ -107,15 +107,6 @@ enum Commands {
     /// Deprecated: use `resq tui explore`
     #[command(hide = true)]
     Explore(commands::explore::ExploreArgs),
-    /// Deprecated: use `resq tui logs`
-    #[command(hide = true)]
-    Logs(commands::explore::LogsArgs),
-    /// Deprecated: use `resq tui health`
-    #[command(hide = true)]
-    Health(commands::explore::HealthArgs),
-    /// Deprecated: use `resq tui deploy`
-    #[command(hide = true)]
-    Deploy(commands::explore::DeployArgs),
     /// Deprecated: use `resq tui clean`
     #[command(hide = true)]
     Clean(commands::explore::CleanArgs),
@@ -152,12 +143,6 @@ struct TuiArgs {
 enum TuiScreen {
     /// Perf-Explorer — live performance metrics
     Explore(commands::explore::ExploreArgs),
-    /// Log-Explorer — tail + filter service logs
-    Logs(commands::explore::LogsArgs),
-    /// Health-Explorer — cluster & service health
-    Health(commands::explore::HealthArgs),
-    /// Deploy-Explorer — deploy/rollback workflows
-    Deploy(commands::explore::DeployArgs),
     /// Cleanup-Explorer — stale branches, artifacts, state
     Clean(commands::explore::CleanArgs),
     /// Asm-Explorer — machine-code analysis of build artifacts
@@ -219,9 +204,6 @@ async fn main() -> anyhow::Result<()> {
         },
         Commands::Tui(TuiArgs { screen }) => match screen {
             TuiScreen::Explore(args) => commands::explore::run_explore(args).await?,
-            TuiScreen::Logs(args) => commands::explore::run_logs(args).await?,
-            TuiScreen::Health(args) => commands::explore::run_health(args).await?,
-            TuiScreen::Deploy(args) => commands::explore::run_deploy(args).await?,
             TuiScreen::Clean(args) => commands::explore::run_clean(args).await?,
             TuiScreen::Asm(args) => commands::explore::run_asm(args).await?,
         },
@@ -254,18 +236,6 @@ async fn main() -> anyhow::Result<()> {
         Commands::Explore(args) => {
             warn_deprecated("explore", "tui explore");
             commands::explore::run_explore(args).await?;
-        }
-        Commands::Logs(args) => {
-            warn_deprecated("logs", "tui logs");
-            commands::explore::run_logs(args).await?;
-        }
-        Commands::Health(args) => {
-            warn_deprecated("health", "tui health");
-            commands::explore::run_health(args).await?;
-        }
-        Commands::Deploy(args) => {
-            warn_deprecated("deploy", "tui deploy");
-            commands::explore::run_deploy(args).await?;
         }
         Commands::Clean(args) => {
             warn_deprecated("clean", "tui clean");

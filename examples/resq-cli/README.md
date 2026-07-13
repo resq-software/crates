@@ -82,6 +82,15 @@ Scanning for secrets...
 7 potential secrets found
 ```
 
+### Gitignore-aware scoping
+
+`secrets` and `copyright` honor the project's `.gitignore` using real gitignore
+semantics — wildcards (`*.min.js`), negations (`!keep.rs`), anchoring (`/build`),
+and nested `.gitignore` files. Gitignored build output and vendored code are
+skipped, so `copyright` never rewrites generated files and `secrets` doesn't
+waste time on `target/` or `node_modules/`. The sample project gitignores
+`target/` and `.env`, so those are left untouched.
+
 ### Key takeaway
 
 Run `resq pre-commit` before every commit to catch both missing headers and leaked secrets in one pass. Set it up as a git hook:
