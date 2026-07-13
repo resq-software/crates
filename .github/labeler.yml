@@ -33,21 +33,9 @@
   - changed-files:
     - any-glob-to-any-file: crates/resq-clean/**/*
 
-"crate:resq-deploy":
-  - changed-files:
-    - any-glob-to-any-file: crates/resq-deploy/**/*
-
 "crate:resq-flame":
   - changed-files:
     - any-glob-to-any-file: crates/resq-flame/**/*
-
-"crate:resq-health":
-  - changed-files:
-    - any-glob-to-any-file: crates/resq-health/**/*
-
-"crate:resq-logs":
-  - changed-files:
-    - any-glob-to-any-file: crates/resq-logs/**/*
 
 "crate:resq-perf":
   - changed-files:

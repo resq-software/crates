@@ -49,10 +49,7 @@ WORKDIR /app
 COPY --from=builder /app/target/release/resq         /usr/local/bin/resq
 COPY --from=builder /app/target/release/resq-bin     /usr/local/bin/resq-bin
 COPY --from=builder /app/target/release/resq-clean   /usr/local/bin/resq-clean
-COPY --from=builder /app/target/release/resq-deploy  /usr/local/bin/resq-deploy
 COPY --from=builder /app/target/release/resq-flame   /usr/local/bin/resq-flame
-COPY --from=builder /app/target/release/resq-health  /usr/local/bin/resq-health
-COPY --from=builder /app/target/release/resq-logs    /usr/local/bin/resq-logs
 COPY --from=builder /app/target/release/resq-perf    /usr/local/bin/resq-perf
 
 USER resq

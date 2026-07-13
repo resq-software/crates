@@ -226,9 +226,7 @@ Response time in the header is color-coded:
 
 ## Related Tools
 
-- [`resq-logs`](../resq-logs/README.md) -- Log aggregator and stream viewer
 - [`resq-flame`](../resq-flame/README.md) -- CPU flame graph profiler
-- [`resq-health`](../resq-health/README.md) -- Service health checker
 
 For comprehensive profiling workflows see [`docs/PROFILING_FLAMEGRAPH_GUIDE.md`](../../docs/PROFILING_FLAMEGRAPH_GUIDE.md).
 

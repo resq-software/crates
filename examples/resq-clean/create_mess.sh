@@ -43,6 +43,10 @@ __pycache__/
 # Build outputs
 build/
 *.log
+
+# Secrets (gitignored — but resq-clean PROTECTS these, never deletes them)
+.env
+.env.*
 GITIGNORE
 
 git add .gitignore
@@ -118,10 +122,31 @@ done
 echo "  build/ dist/    ~3.5 MB"
 echo "  *.log           ~250 KB"
 
+# --- Gitignored files that resq-clean must PRESERVE (safety features) ---
+
+# .env files: gitignored, but resq-clean never offers them for deletion.
+cat > .env << 'ENV'
+# Fake local secrets — clearly not real credentials.
+DATABASE_URL=postgres://demo:demo@localhost/demo
+API_KEY=demo-not-a-real-key
+ENV
+cp .env .env.local
+echo "  .env .env.local (gitignored — PROTECTED, never deleted)"
+
+# Nested negation: a root '*.log' rule is ignored, but a nested '.gitignore'
+# re-includes keep.log with '!keep.log'. resq-clean honors the negation and
+# leaves keep.log alone while still offering the other *.log files.
+mkdir -p important
+printf '!keep.log\n' > important/.gitignore
+echo "preserve me" > important/keep.log
+echo "throwaway"   > important/debug.log
+echo "  important/keep.log (re-included by !keep.log — PRESERVED)"
+
 echo
 echo "=== Workspace ready ==="
 echo "  Location: $WORKSPACE"
 echo "  Source files: src/main.rs, Cargo.toml (will be kept)"
+echo "  Protected:    .env, .env.local, important/keep.log (gitignored but kept)"
 echo "  Artifacts: ~55 MB across 7 gitignored categories"
 echo
 echo "Run resq-clean:"
