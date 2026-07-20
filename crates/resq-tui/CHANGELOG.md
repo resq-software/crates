@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.11](https://github.com/resq-software/crates/releases/tag/0.1.11) - 2026-07-20
+
+### Miscellaneous
+
+- Remove resq-deploy, resq-health, resq-logs crates ([#139](https://github.com/resq-software/crates/pull/139))
+
+
+
 ## [0.1.10](https://github.com/resq-software/crates/releases/tag/0.1.10) - 2026-07-06
 
 
