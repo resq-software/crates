@@ -9,7 +9,11 @@ updates:
       - minor
       - patch
   ignore:
-  - dependency-name: "github/gh-aw-actions" # Managed by gh aw compile. Version-locked to the gh-aw compiler; do not bump.
+  # Dependabot names an action by its full path, so the actual dependency here
+  # is `github/gh-aw-actions/setup` — a bare `github/gh-aw-actions` never
+  # matched it and this ignore silently did nothing. The trailing `*` is what
+  # makes it bite.
+  - dependency-name: "github/gh-aw-actions*" # Managed by gh aw compile. Version-locked to the gh-aw compiler; do not bump.
   labels:
   - dependencies
   - github-actions
