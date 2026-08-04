@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.19](https://github.com/resq-software/crates/releases/tag/0.1.19) - 2026-08-03
+
+### Miscellaneous
+
+- Update Cargo.lock dependencies
+
+
+
 ## [0.1.18](https://github.com/resq-software/crates/releases/tag/0.1.18) - 2026-07-06
 
 
