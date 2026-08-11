@@ -449,6 +449,10 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
 
 // ── Logic Helpers ────────────────────────────────────────────────────────────
 
+/// Staged additions, copies and modifications, optionally narrowed by extension.
+///
+/// An empty `exts` means every staged file, for a step that decides per file what
+/// it can handle rather than being told in advance.
 fn staged_files(exts: &[&str]) -> Vec<String> {
     let output = Command::new("git")
         .args(["diff", "--cached", "--name-only", "--diff-filter=ACM"])
@@ -459,7 +463,7 @@ fn staged_files(exts: &[&str]) -> Vec<String> {
     }
     String::from_utf8_lossy(&output.stdout)
         .lines()
-        .filter(|f| exts.iter().any(|ext| f.ends_with(ext)))
+        .filter(|f| exts.is_empty() || exts.iter().any(|ext| f.ends_with(ext)))
         .filter(|f| !f.contains("/vendor/"))
         .map(String::from)
         .collect()
@@ -493,10 +497,31 @@ struct StepResult {
 
 // ── Step Implementations ─────────────────────────────────────────────────────
 
+// Scoped to the staged set, like every other rewriting step.
+//
+// This used to run `resq copyright` with no paths — which walks every tracked
+// file in the repository — and then `git add -u`, which stages every tracked
+// modification rather than the files the rewrite touched. Two ways for a commit
+// to grow behind the author's back: headers appeared on files unrelated to the
+// change, and any unrelated edit already sitting in the working tree was staged
+// along with them. Neither is visible in the hook's output, so the first sign is
+// the diff on the pull request.
+//
+// Extensions are not filtered here. `copyright` skips a file it has no comment
+// style for, and a second list in this file would drift from that one.
 fn step_copyright(root: &Path) -> StepResult {
+    let files = staged_files(&[]);
+    if files.is_empty() {
+        return StepResult {
+            status: StepStatus::Skip,
+            detail: Some("no files".into()),
+            sub_lines: vec![],
+        };
+    }
     let exe = self_exe();
     let ok = Command::new(&exe)
         .arg("copyright")
+        .args(&files)
         .current_dir(root)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -509,12 +534,10 @@ fn step_copyright(root: &Path) -> StepResult {
             sub_lines: vec![],
         };
     }
-    let _ = Command::new("git")
-        .args(["add", "-u"])
-        .current_dir(root)
-        .status();
+    restage(&files);
     let ok = Command::new(&exe)
         .args(["copyright", "--check"])
+        .args(&files)
         .current_dir(root)
         .stdout(Stdio::null())
         .stderr(Stdio::null())

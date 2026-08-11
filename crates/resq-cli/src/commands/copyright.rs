@@ -80,6 +80,12 @@ pub struct CopyrightArgs {
     /// Patterns to exclude from processing
     #[arg(short, long)]
     pub exclude: Vec<String>,
+
+    /// Files to process. Without these, every tracked file in the repository is
+    /// processed — right for a one-off sweep, wrong for a pre-commit hook, where
+    /// the rewrite has to stay inside the commit being made.
+    #[arg(value_name = "FILE")]
+    pub paths: Vec<PathBuf>,
 }
 
 // ── License Templates ───────────────────────────────────────────────────────
@@ -725,7 +731,22 @@ fn collect_files_from_walk(root: &Path) -> Vec<PathBuf> {
 fn discover_files(args: &CopyrightArgs) -> Result<Vec<PathBuf>> {
     let root = crate::utils::find_project_root();
 
-    let raw = if !args.glob.is_empty() {
+    let raw = if !args.paths.is_empty() {
+        // Named explicitly, so take them as given rather than discovering. The
+        // downstream ignore, exclude and extension filters still apply, which
+        // costs nothing for the caller that needs this — `pre-commit` passes
+        // staged files, and a staged file is tracked and therefore not ignored.
+        args.paths
+            .iter()
+            .map(|p| {
+                if p.is_absolute() {
+                    p.clone()
+                } else {
+                    root.join(p)
+                }
+            })
+            .collect()
+    } else if !args.glob.is_empty() {
         // Adjust globs to be relative to root or handle them as is
         collect_files_from_globs(&args.glob, args.verbose)?
     } else if let Some(git_files) = collect_files_from_git(args.verbose) {
