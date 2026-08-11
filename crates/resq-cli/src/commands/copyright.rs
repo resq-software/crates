@@ -59,8 +59,14 @@ pub struct CopyrightArgs {
     #[arg(long)]
     pub check: bool,
 
-    /// Print detailed processing info
-    #[arg(short, long)]
+    /// Print detailed processing info.
+    ///
+    /// Short form only, and carrying its own arg id, for the reason spelled out
+    /// on `SecretsArgs::verbose`: the root `Cli` declares a `global = true`
+    /// `--verbose` counter, clap identifies arguments by id, and a second
+    /// `verbose` here made the root's `remove_one::<u8>("verbose")` panic on
+    /// every invocation.
+    #[arg(short = 'v', id = "copyright_verbose")]
     pub verbose: bool,
 
     /// Glob patterns to match files (e.g. "src/**/*.rs")
@@ -74,6 +80,12 @@ pub struct CopyrightArgs {
     /// Patterns to exclude from processing
     #[arg(short, long)]
     pub exclude: Vec<String>,
+
+    /// Files to process. Without these, every tracked file in the repository is
+    /// processed — right for a one-off sweep, wrong for a pre-commit hook, where
+    /// the rewrite has to stay inside the commit being made.
+    #[arg(value_name = "FILE")]
+    pub paths: Vec<PathBuf>,
 }
 
 // ── License Templates ───────────────────────────────────────────────────────
@@ -719,7 +731,26 @@ fn collect_files_from_walk(root: &Path) -> Vec<PathBuf> {
 fn discover_files(args: &CopyrightArgs) -> Result<Vec<PathBuf>> {
     let root = crate::utils::find_project_root();
 
-    let raw = if !args.glob.is_empty() {
+    // Naming a file is a more specific instruction than any discovery rule, so the
+    // gitignore filter below is skipped for it. `git add -f` makes "tracked and
+    // ignored" a reachable combination, and a staged file in that state would
+    // otherwise be dropped here — leaving `pre-commit` reporting success on a file
+    // it never gave a header. `--exclude` and `--ext` still apply: those are the
+    // caller's own narrowing, not a rule inferred from the repository.
+    let explicit = !args.paths.is_empty();
+
+    let raw = if explicit {
+        args.paths
+            .iter()
+            .map(|p| {
+                if p.is_absolute() {
+                    p.clone()
+                } else {
+                    root.join(p)
+                }
+            })
+            .collect()
+    } else if !args.glob.is_empty() {
         // Adjust globs to be relative to root or handle them as is
         collect_files_from_globs(&args.glob, args.verbose)?
     } else if let Some(git_files) = collect_files_from_git(args.verbose) {
@@ -750,7 +781,7 @@ fn discover_files(args: &CopyrightArgs) -> Result<Vec<PathBuf>> {
 
     let files: Vec<PathBuf> = raw
         .into_iter()
-        .filter(|p| !ignore_matcher.is_ignored(p, false))
+        .filter(|p| explicit || !ignore_matcher.is_ignored(p, false))
         .filter(|p| {
             let s = p.to_string_lossy();
             !args.exclude.iter().any(|ex| s.contains(ex.as_str()))
