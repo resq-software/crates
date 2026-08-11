@@ -449,6 +449,10 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
 
 // ── Logic Helpers ────────────────────────────────────────────────────────────
 
+/// Staged additions, copies and modifications, optionally narrowed by extension.
+///
+/// An empty `exts` means every staged file, for a step that decides per file what
+/// it can handle rather than being told in advance.
 fn staged_files(exts: &[&str]) -> Vec<String> {
     let output = Command::new("git")
         .args(["diff", "--cached", "--name-only", "--diff-filter=ACM"])
@@ -459,15 +463,31 @@ fn staged_files(exts: &[&str]) -> Vec<String> {
     }
     String::from_utf8_lossy(&output.stdout)
         .lines()
-        .filter(|f| exts.iter().any(|ext| f.ends_with(ext)))
-        .filter(|f| !f.contains("/vendor/"))
+        .filter(|f| exts.is_empty() || exts.iter().any(|ext| f.ends_with(ext)))
+        .filter(|f| !is_vendored(f))
         .map(String::from)
         .collect()
 }
 
+/// Whether a repo-relative path lies under a `vendor` directory.
+///
+/// Compared per path component. A `contains("/vendor/")` test misses
+/// `vendor/foo.rs` at the repository root — the leading slash is never there —
+/// and would also match a `my-vendor-lib/` directory that is nothing of the kind.
+fn is_vendored(path: &str) -> bool {
+    path.split('/').any(|component| component == "vendor")
+}
+
 fn restage(files: &[String]) {
     if !files.is_empty() {
-        let _ = Command::new("git").arg("add").args(files).status();
+        // `--` because a path is not an option. Without it `git add` reads a file
+        // named `-A` as the flag of that name and stages the entire worktree,
+        // which is the failure this step exists to prevent.
+        let _ = Command::new("git")
+            .arg("add")
+            .arg("--")
+            .args(files)
+            .status();
     }
 }
 
@@ -493,10 +513,32 @@ struct StepResult {
 
 // ── Step Implementations ─────────────────────────────────────────────────────
 
+// Scoped to the staged set, like every other rewriting step.
+//
+// This used to run `resq copyright` with no paths — which walks every tracked
+// file in the repository — and then `git add -u`, which stages every tracked
+// modification rather than the files the rewrite touched. Two ways for a commit
+// to grow behind the author's back: headers appeared on files unrelated to the
+// change, and any unrelated edit already sitting in the working tree was staged
+// along with them. Neither is visible in the hook's output, so the first sign is
+// the diff on the pull request.
+//
+// Extensions are not filtered here. `copyright` skips a file it has no comment
+// style for, and a second list in this file would drift from that one.
 fn step_copyright(root: &Path) -> StepResult {
+    let files = staged_files(&[]);
+    if files.is_empty() {
+        return StepResult {
+            status: StepStatus::Skip,
+            detail: Some("no files".into()),
+            sub_lines: vec![],
+        };
+    }
     let exe = self_exe();
     let ok = Command::new(&exe)
         .arg("copyright")
+        .arg("--")
+        .args(&files)
         .current_dir(root)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -509,12 +551,10 @@ fn step_copyright(root: &Path) -> StepResult {
             sub_lines: vec![],
         };
     }
-    let _ = Command::new("git")
-        .args(["add", "-u"])
-        .current_dir(root)
-        .status();
+    restage(&files);
     let ok = Command::new(&exe)
-        .args(["copyright", "--check"])
+        .args(["copyright", "--check", "--"])
+        .args(&files)
         .current_dir(root)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -1136,4 +1176,35 @@ fn run_plain(root: &Path, skip_audit: bool, skip_format: bool, max_file_size: u6
         bail!("checks failed");
     }
     Ok(())
+}
+
+// ── Tests ───────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::is_vendored;
+
+    #[test]
+    fn vendor_is_matched_at_the_repository_root() {
+        // The case the old `contains("/vendor/")` test missed: there is no leading
+        // slash on a repo-relative path, so a root-level vendor tree was swept into
+        // every rewriting step.
+        assert!(is_vendored("vendor/foo.rs"));
+        assert!(is_vendored("vendor/nested/deep/foo.rs"));
+    }
+
+    #[test]
+    fn vendor_is_matched_when_nested() {
+        assert!(is_vendored("crates/thing/vendor/foo.rs"));
+        assert!(is_vendored("a/b/vendor/c/d.rs"));
+    }
+
+    #[test]
+    fn a_name_merely_containing_vendor_is_not_vendored() {
+        // Component equality, not substring: these are ordinary source files.
+        assert!(!is_vendored("my-vendor-lib/foo.rs"));
+        assert!(!is_vendored("crates/vendored/foo.rs"));
+        assert!(!is_vendored("src/vendor.rs"));
+        assert!(!is_vendored("src/vendoring/foo.rs"));
+    }
 }

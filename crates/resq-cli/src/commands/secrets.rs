@@ -42,8 +42,22 @@ pub struct SecretsArgs {
     #[arg(long, default_value_t = true)]
     pub git_only: bool,
 
-    /// Show verbose output (print matched content)
-    #[arg(long, short)]
+    /// Report progress, and a redacted excerpt of each history finding.
+    ///
+    /// Never the raw match. `Finding::content` is passed through `redact_line`
+    /// where it is captured, so what reaches a terminal or a CI log is a prefix
+    /// and suffix around `...REDACTED...`. A line of 20 characters or fewer is
+    /// too short to redact usefully and is printed as-is, so this is an excerpt
+    /// of a *matching line*, not a guarantee about the secret inside it.
+    ///
+    /// Short form only, and carrying its own arg id. The root `Cli` declares a
+    /// `global = true` `--verbose` counter, and clap identifies arguments by id:
+    /// a second `verbose` here shadowed it, so the root's own
+    /// `remove_one::<u8>("verbose")` then read a `bool` and panicked — aborting
+    /// every `resq secrets` invocation before it reached this code. The root
+    /// flag's documentation already draws the line this restores: it owns
+    /// `--verbose`, subcommands keep `-v`.
+    #[arg(short = 'v', id = "secrets_verbose")]
     pub verbose: bool,
 
     /// Path to allowlist file (one pattern per line)
