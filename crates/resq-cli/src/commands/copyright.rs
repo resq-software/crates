@@ -731,11 +731,15 @@ fn collect_files_from_walk(root: &Path) -> Vec<PathBuf> {
 fn discover_files(args: &CopyrightArgs) -> Result<Vec<PathBuf>> {
     let root = crate::utils::find_project_root();
 
-    let raw = if !args.paths.is_empty() {
-        // Named explicitly, so take them as given rather than discovering. The
-        // downstream ignore, exclude and extension filters still apply, which
-        // costs nothing for the caller that needs this — `pre-commit` passes
-        // staged files, and a staged file is tracked and therefore not ignored.
+    // Naming a file is a more specific instruction than any discovery rule, so the
+    // gitignore filter below is skipped for it. `git add -f` makes "tracked and
+    // ignored" a reachable combination, and a staged file in that state would
+    // otherwise be dropped here — leaving `pre-commit` reporting success on a file
+    // it never gave a header. `--exclude` and `--ext` still apply: those are the
+    // caller's own narrowing, not a rule inferred from the repository.
+    let explicit = !args.paths.is_empty();
+
+    let raw = if explicit {
         args.paths
             .iter()
             .map(|p| {
@@ -777,7 +781,7 @@ fn discover_files(args: &CopyrightArgs) -> Result<Vec<PathBuf>> {
 
     let files: Vec<PathBuf> = raw
         .into_iter()
-        .filter(|p| !ignore_matcher.is_ignored(p, false))
+        .filter(|p| explicit || !ignore_matcher.is_ignored(p, false))
         .filter(|p| {
             let s = p.to_string_lossy();
             !args.exclude.iter().any(|ex| s.contains(ex.as_str()))

@@ -42,7 +42,13 @@ pub struct SecretsArgs {
     #[arg(long, default_value_t = true)]
     pub git_only: bool,
 
-    /// Show verbose output (print matched content).
+    /// Report progress, and a redacted excerpt of each history finding.
+    ///
+    /// Never the raw match. `Finding::content` is passed through `redact_line`
+    /// where it is captured, so what reaches a terminal or a CI log is a prefix
+    /// and suffix around `...REDACTED...`. A line of 20 characters or fewer is
+    /// too short to redact usefully and is printed as-is, so this is an excerpt
+    /// of a *matching line*, not a guarantee about the secret inside it.
     ///
     /// Short form only, and carrying its own arg id. The root `Cli` declares a
     /// `global = true` `--verbose` counter, and clap identifies arguments by id:

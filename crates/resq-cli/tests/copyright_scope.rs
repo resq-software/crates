@@ -92,11 +92,9 @@ fn no_paths_still_sweeps_the_repository() {
 #[test]
 fn check_reports_only_the_named_paths() {
     let tmp = init_repo();
-    assert!(
-        resq(tmp.path(), &["copyright", "wanted.rs"])
-            .status
-            .success()
-    );
+    assert!(resq(tmp.path(), &["copyright", "wanted.rs"])
+        .status
+        .success());
 
     // `wanted.rs` now has a header and `bystander.rs` does not. A check scoped to
     // the former has to pass despite the latter, or a hook that stamps only what
@@ -128,5 +126,63 @@ fn named_paths_take_precedence_over_globs() {
     assert!(
         !has_header(tmp.path(), "bystander.rs"),
         "explicit paths are the most specific instruction and must win"
+    );
+}
+
+#[test]
+fn a_force_added_ignored_file_is_still_stamped() {
+    // `git add -f` makes "tracked and ignored" reachable, so a staged path can
+    // match .gitignore. Dropping it here would let the pre-commit step report
+    // success on a file it never gave a header.
+    let tmp = init_repo();
+    std::fs::write(tmp.path().join(".gitignore"), "ignored.rs\n").unwrap();
+    std::fs::write(tmp.path().join("ignored.rs"), "fn ignored() {}\n").unwrap();
+    git(tmp.path(), &["add", "-f", "ignored.rs", ".gitignore"])
+        .status()
+        .unwrap();
+
+    let out = resq(tmp.path(), &["copyright", "--", "ignored.rs"]);
+    assert!(out.status.success(), "copyright failed: {out:?}");
+    assert!(
+        has_header(tmp.path(), "ignored.rs"),
+        "a named path outranks the ignore rules that discovery would apply"
+    );
+}
+
+#[test]
+fn discovery_still_honours_gitignore() {
+    // The counterpart to the test above: only naming a file overrides the ignore
+    // rules, so a sweep must leave an ignored file alone.
+    let tmp = init_repo();
+    std::fs::write(tmp.path().join(".gitignore"), "ignored.rs\n").unwrap();
+    std::fs::write(tmp.path().join("ignored.rs"), "fn ignored() {}\n").unwrap();
+    git(tmp.path(), &["add", "-f", "ignored.rs", ".gitignore"])
+        .status()
+        .unwrap();
+
+    assert!(resq(tmp.path(), &["copyright"]).status.success());
+    assert!(
+        !has_header(tmp.path(), "ignored.rs"),
+        "without an explicit path the ignore rules still apply"
+    );
+}
+
+#[test]
+fn a_leading_dash_filename_is_treated_as_a_path() {
+    // Without the `--` terminator the CLI reads `-weird.rs` as a bundle of short
+    // flags. The same hazard is why `restage` passes `--` to `git add`, where a
+    // file named `-A` would otherwise stage the entire worktree.
+    let tmp = init_repo();
+    std::fs::write(tmp.path().join("-weird.rs"), "fn weird() {}\n").unwrap();
+    git(tmp.path(), &["add", "--", "-weird.rs"])
+        .status()
+        .unwrap();
+
+    let out = resq(tmp.path(), &["copyright", "--", "-weird.rs"]);
+    assert!(out.status.success(), "copyright failed: {out:?}");
+    assert!(has_header(tmp.path(), "-weird.rs"));
+    assert!(
+        !has_header(tmp.path(), "bystander.rs"),
+        "the odd filename must not have widened the scope"
     );
 }
