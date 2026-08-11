@@ -42,8 +42,16 @@ pub struct SecretsArgs {
     #[arg(long, default_value_t = true)]
     pub git_only: bool,
 
-    /// Show verbose output (print matched content)
-    #[arg(long, short)]
+    /// Show verbose output (print matched content).
+    ///
+    /// Short form only, and carrying its own arg id. The root `Cli` declares a
+    /// `global = true` `--verbose` counter, and clap identifies arguments by id:
+    /// a second `verbose` here shadowed it, so the root's own
+    /// `remove_one::<u8>("verbose")` then read a `bool` and panicked — aborting
+    /// every `resq secrets` invocation before it reached this code. The root
+    /// flag's documentation already draws the line this restores: it owns
+    /// `--verbose`, subcommands keep `-v`.
+    #[arg(short = 'v', id = "secrets_verbose")]
     pub verbose: bool,
 
     /// Path to allowlist file (one pattern per line)

@@ -59,8 +59,14 @@ pub struct CopyrightArgs {
     #[arg(long)]
     pub check: bool,
 
-    /// Print detailed processing info
-    #[arg(short, long)]
+    /// Print detailed processing info.
+    ///
+    /// Short form only, and carrying its own arg id, for the reason spelled out
+    /// on `SecretsArgs::verbose`: the root `Cli` declares a `global = true`
+    /// `--verbose` counter, clap identifies arguments by id, and a second
+    /// `verbose` here made the root's `remove_one::<u8>("verbose")` panic on
+    /// every invocation.
+    #[arg(short = 'v', id = "copyright_verbose")]
     pub verbose: bool,
 
     /// Glob patterns to match files (e.g. "src/**/*.rs")
