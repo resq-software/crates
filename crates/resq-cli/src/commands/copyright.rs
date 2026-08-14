@@ -728,6 +728,49 @@ fn collect_files_from_walk(root: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
+/// Whether a path is a git hook this tool does not own.
+///
+/// Hook files are installed artifacts, not repository source. Their canonical
+/// content lives in `crates/resq-cli/templates/git-hooks`, carries its own header
+/// naming `ResQ Software`, and `install-hooks.sh` verifies each one against a
+/// pinned SHA-256 before writing it.
+///
+/// Stamping them breaks that. This command's default author is
+/// `ResQ Systems, Inc.`, which it reads as an author mismatch on a canonical hook,
+/// so it strips the header and writes its own — and the file no longer matches the
+/// pinned digest. Re-installing restores canonical, the next commit rewrites it
+/// again, and the two fight forever. Measured across the org: six repositories
+/// carried hooks, and not one still matched canonical.
+///
+/// Skipped even when named explicitly, since the `pre-commit` step passes its
+/// staged set and would otherwise rewrite a hook the moment anyone commits one.
+///
+/// Only the six canonical names, and only inside a hooks directory. Everything
+/// else there — `local-*` overrides, a `README.md` — is written by the repository
+/// that hosts it, is not digest-pinned, and stays under the normal policy.
+fn is_managed_hook(path: &Path) -> bool {
+    const CANONICAL: [&str; 6] = [
+        "pre-commit",
+        "commit-msg",
+        "prepare-commit-msg",
+        "pre-push",
+        "post-checkout",
+        "post-merge",
+    ];
+
+    let in_hooks_dir = path
+        .parent()
+        .and_then(Path::file_name)
+        .and_then(|n| n.to_str())
+        .is_some_and(|n| n == ".git-hooks" || n == "git-hooks");
+
+    in_hooks_dir
+        && path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .is_some_and(|n| CANONICAL.contains(&n))
+}
+
 fn discover_files(args: &CopyrightArgs) -> Result<Vec<PathBuf>> {
     let root = crate::utils::find_project_root();
 
@@ -781,6 +824,7 @@ fn discover_files(args: &CopyrightArgs) -> Result<Vec<PathBuf>> {
 
     let files: Vec<PathBuf> = raw
         .into_iter()
+        .filter(|p| !is_managed_hook(p))
         .filter(|p| explicit || !ignore_matcher.is_ignored(p, false))
         .filter(|p| {
             let s = p.to_string_lossy();
@@ -1043,6 +1087,42 @@ pub fn run(args: &CopyrightArgs) -> Result<()> {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn managed_hooks_are_skipped() {
+        // Consumer repositories install to `.git-hooks/`; the canonical copies live
+        // under `templates/git-hooks/` here. Both are owned elsewhere.
+        assert!(is_managed_hook(Path::new(".git-hooks/pre-commit")));
+        assert!(is_managed_hook(Path::new("/repo/.git-hooks/commit-msg")));
+        assert!(is_managed_hook(Path::new(
+            "crates/resq-cli/templates/git-hooks/pre-push"
+        )));
+    }
+
+    #[test]
+    fn ordinary_paths_are_not_managed_hooks() {
+        // Component equality, so a name merely containing the word is untouched.
+        assert!(!is_managed_hook(Path::new("src/git-hooks.rs")));
+        assert!(!is_managed_hook(Path::new("docs/git-hooks-guide.md")));
+        assert!(!is_managed_hook(Path::new("src/hooks/use_thing.rs")));
+        assert!(!is_managed_hook(Path::new("crates/resq-cli/src/main.rs")));
+    }
+
+    #[test]
+    fn repo_owned_files_beside_the_hooks_are_still_stamped() {
+        // `local-*` and the directory's own README belong to the repository that
+        // hosts them. They are not digest-pinned, so normal policy applies.
+        assert!(!is_managed_hook(Path::new(".git-hooks/local-pre-commit")));
+        assert!(!is_managed_hook(Path::new(".git-hooks/local-pre-push")));
+        assert!(!is_managed_hook(Path::new(".git-hooks/README.md")));
+    }
+
+    #[test]
+    fn a_canonical_name_outside_a_hooks_directory_is_not_exempt() {
+        // The exemption is about where the file lives, not what it is called.
+        assert!(!is_managed_hook(Path::new("scripts/pre-commit")));
+        assert!(!is_managed_hook(Path::new("pre-push")));
+    }
 
     #[test]
     fn test_has_header_positive() {
