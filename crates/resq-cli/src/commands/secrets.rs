@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 ResQ
+ * Copyright 2026 ResQ Systems, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -537,7 +537,7 @@ fn has_test_marker(line: &str) -> bool {
 }
 
 /// Returns true if the matched hex string is a well-known non-secret
-/// (git SHA context, integrity hashes, checksums).
+/// (git SHA context, integrity hashes, checksums, pinned Action refs).
 fn is_known_non_secret_hex(line: &str) -> bool {
     let lower = line.trim().to_lowercase();
     lower.starts_with("commit ")
@@ -546,6 +546,39 @@ fn is_known_non_secret_hex(line: &str) -> bool {
         || lower.contains("checksum")
         || lower.contains("srchash")
         || lower.contains("filehash")
+        || is_pinned_action_ref(&lower)
+}
+
+/// Returns true if the line is a GitHub Actions step or reusable-workflow
+/// reference pinned to a commit SHA — `uses: owner/repo@<40 hex>`.
+///
+/// A 40-char git SHA is indistinguishable from a credential by entropy alone,
+/// so without this every SHA-pinned `uses:` trips the high-entropy rule. That
+/// penalises exactly the supply-chain practice we want: a repo that pins all
+/// its actions would have to allowlist every workflow file wholesale, which
+/// blinds the scanner to real secrets in those same files.
+///
+/// Deliberately narrow. The line must be a `uses:` key — optionally behind YAML
+/// indentation and a `- ` sequence marker — whose value ends in `@` plus exactly
+/// 40 hex characters. A tag or branch ref (`@v7`, `@main`) is not a pin and is
+/// left to the other rules; a SHA anywhere other than a `uses:` value is still
+/// reported.
+fn is_pinned_action_ref(lower: &str) -> bool {
+    let rest = lower
+        .strip_prefix('-')
+        .map_or(lower, |after_dash| after_dash.trim_start());
+    let Some(value) = rest.strip_prefix("uses:") else {
+        return false;
+    };
+    let Some((_, after_at)) = value.trim().rsplit_once('@') else {
+        return false;
+    };
+    // A trailing `# v1.2.3` version comment is conventional on pinned refs.
+    let sha = after_at
+        .split_once('#')
+        .map_or(after_at, |(before, _)| before)
+        .trim();
+    sha.len() == 40 && sha.chars().all(|c| c.is_ascii_hexdigit())
 }
 
 // ── Git File Collection ───────────────────────────────────────────────────────
@@ -1126,6 +1159,47 @@ mod tests {
     fn non_secret_plain_hex_is_secret() {
         assert!(!is_known_non_secret_hex(
             "abc123def456789012345678901234567890abcd"
+        ));
+    }
+
+    #[test]
+    fn non_secret_action_pin() {
+        assert!(is_known_non_secret_hex(
+            "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+        ));
+    }
+
+    #[test]
+    fn non_secret_action_pin_with_version_comment() {
+        assert!(is_known_non_secret_hex(
+            "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1"
+        ));
+    }
+
+    #[test]
+    fn non_secret_reusable_workflow_pin() {
+        // No `- ` sequence marker, and the path itself contains dots and slashes.
+        assert!(is_known_non_secret_hex(
+            "    uses: resq-software/.github/.github/workflows/security-scan.yml@85e7d7cae1d1c9e4d7cc4af42e4c91f69378209d # main"
+        ));
+    }
+
+    #[test]
+    fn action_pin_requires_uses_key() {
+        // Same shape, but not a `uses:` line — must still be reported.
+        assert!(!is_known_non_secret_hex(
+            "    token: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+        ));
+    }
+
+    #[test]
+    fn action_pin_requires_forty_hex_chars() {
+        // A tag ref is not a pin, and 39 hex chars is not a SHA.
+        assert!(!is_known_non_secret_hex(
+            "      - uses: actions/checkout@v7"
+        ));
+        assert!(!is_known_non_secret_hex(
+            "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b"
         ));
     }
 
