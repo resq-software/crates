@@ -537,7 +537,7 @@ fn has_test_marker(line: &str) -> bool {
 }
 
 /// Returns true if the matched hex string is a well-known non-secret
-/// (git SHA context, integrity hashes, checksums, pinned Action refs).
+/// (git SHA context, integrity hashes, checksums).
 fn is_known_non_secret_hex(line: &str) -> bool {
     let lower = line.trim().to_lowercase();
     lower.starts_with("commit ")
@@ -546,11 +546,10 @@ fn is_known_non_secret_hex(line: &str) -> bool {
         || lower.contains("checksum")
         || lower.contains("srchash")
         || lower.contains("filehash")
-        || is_pinned_action_ref(&lower)
 }
 
-/// Returns true if the line is a GitHub Actions step or reusable-workflow
-/// reference pinned to a commit SHA — `uses: owner/repo@<40 hex>`.
+/// Returns the commit SHA of a GitHub Actions step or reusable-workflow
+/// reference pinned to one — `uses: owner/repo@<40 hex>` — or `None`.
 ///
 /// A 40-char git SHA is indistinguishable from a credential by entropy alone,
 /// so without this every SHA-pinned `uses:` trips the high-entropy rule. That
@@ -558,31 +557,38 @@ fn is_known_non_secret_hex(line: &str) -> bool {
 /// its actions would have to allowlist every workflow file wholesale, which
 /// blinds the scanner to real secrets in those same files.
 ///
-/// Deliberately narrow. The line must be a `uses:` key — optionally behind YAML
-/// indentation and a `- ` sequence marker — whose value ends in `@` plus exactly
-/// 40 hex characters. A tag or branch ref (`@v7`, `@main`) is not a pin and is
-/// left to the other rules; a SHA anywhere other than a `uses:` value is still
-/// reported.
-fn is_pinned_action_ref(lower: &str) -> bool {
-    let rest = lower
-        .strip_prefix('-')
-        .map_or(lower, |after_dash| after_dash.trim_start());
-    let Some(value) = rest.strip_prefix("uses:") else {
-        return false;
+/// Returns the SHA rather than a bool so the caller can suppress only the
+/// finding whose match IS that SHA. Excusing every hex finding on the line
+/// would let a pin act as a shield: `uses: o/r@<sha> # token=<40 hex>` would
+/// hide the token sitting next to it.
+///
+/// Deliberately narrow:
+/// * the line must be a `uses:` key, optionally behind YAML indentation and a
+///   `- ` sequence marker — the dash must be followed by whitespace, since
+///   `-uses:` is not valid YAML and should not earn an exemption;
+/// * a trailing comment is stripped *before* the `@` is located, so a comment
+///   that itself contains `@` (`# see @v3`) cannot be mistaken for the ref
+///   separator;
+/// * the value may be YAML-quoted, in which case the closing quote sits between
+///   the SHA and any comment, so quotes are stripped after the comment;
+/// * the ref must be exactly 40 hex characters. A tag or branch (`@v7`,
+///   `@main`) is not a pin and is left to the other rules.
+fn pinned_action_sha(line: &str) -> Option<&str> {
+    let trimmed = line.trim_start();
+    let rest = match trimmed.strip_prefix('-') {
+        // `- uses:` — a YAML sequence marker must be followed by whitespace.
+        Some(after_dash) if after_dash.starts_with(char::is_whitespace) => after_dash.trim_start(),
+        // `-uses:` is not valid YAML; do not treat it as a pin.
+        Some(_) => return None,
+        None => trimmed,
     };
-    let Some((_, after_at)) = value.trim().rsplit_once('@') else {
-        return false;
-    };
-    // A trailing `# v1.2.3` version comment is conventional on pinned refs.
-    // The value may also be YAML-quoted, in which case the closing quote sits
-    // between the SHA and that comment — `uses: "owner/repo@<sha>" # v1.2.3` —
-    // so strip quotes after splitting off the comment, not before.
-    let sha = after_at
-        .split_once('#')
-        .map_or(after_at, |(before, _)| before)
+    let value = rest.strip_prefix("uses:")?;
+    let without_comment = value.split_once('#').map_or(value, |(before, _)| before);
+    let (_, sha) = without_comment
         .trim()
-        .trim_matches(|c| c == '"' || c == '\'');
-    sha.len() == 40 && sha.chars().all(|c| c.is_ascii_hexdigit())
+        .trim_matches(|c| c == '"' || c == '\'')
+        .rsplit_once('@')?;
+    (sha.len() == 40 && sha.chars().all(|c| c.is_ascii_hexdigit())).then_some(sha)
 }
 
 // ── Git File Collection ───────────────────────────────────────────────────────
@@ -692,10 +698,19 @@ fn load_allowlist(path: &Path) -> Vec<String> {
         .collect()
 }
 
-fn is_allowlisted(finding: &Finding, allowlist: &[String]) -> bool {
+/// Returns true if a finding on `line` in `file` is allowlisted.
+///
+/// Matches the RAW line, not `Finding::content`. `content` is passed through
+/// `redact_line`, which keeps only the first `min(10, len/4)` and last
+/// `min(6, len/6)` characters — so matching against it made a content pattern
+/// succeed or fail purely on the length of the line it appeared in. The same
+/// pattern would suppress one rule declaration and miss its neighbour two lines
+/// away. Callers write patterns against the text they can see in the file, so
+/// that is what they are matched against.
+fn is_allowlisted(line: &str, file: &str, allowlist: &[String]) -> bool {
     allowlist
         .iter()
-        .any(|pattern| finding.content.contains(pattern) || finding.file.contains(pattern))
+        .any(|pattern| line.contains(pattern) || file.contains(pattern))
 }
 
 // ── Line Scanning ─────────────────────────────────────────────────────────────
@@ -748,8 +763,16 @@ fn scan_line(
             }
         }
 
-        // Hex-specific non-secret exclusions
-        if rule.name.contains("Hex") && is_known_non_secret_hex(line) {
+        // Hex-specific non-secret exclusions.
+        //
+        // The pinned-Action case is compared against `matched`, not just the
+        // line: a pin must only excuse the SHA itself. Excusing the whole line
+        // would turn a pin into a shield — `uses: o/r@<sha> # token=<40 hex>`
+        // would suppress the token sitting beside it.
+        if rule.name.contains("Hex")
+            && (is_known_non_secret_hex(line)
+                || pinned_action_sha(line).is_some_and(|sha| sha.eq_ignore_ascii_case(matched)))
+        {
             continue;
         }
 
@@ -760,16 +783,16 @@ fn scan_line(
             continue;
         }
 
-        let finding = Finding {
+        if is_allowlisted(line, rel_path, allowlist) {
+            continue;
+        }
+
+        out.push(Finding {
             file: rel_path.to_string(),
             line: line_num + 1,
             rule: rule.name.to_string(),
             content: redact_line(line),
-        };
-
-        if !is_allowlisted(&finding, allowlist) {
-            out.push(finding);
-        }
+        });
     }
 }
 
@@ -1166,61 +1189,131 @@ mod tests {
         ));
     }
 
+    // ── pinned_action_sha ────────────────────────────────────────────────────
+    //
+    // Fixture SHAs are deliberately zero-entropy repeats rather than real
+    // commit hashes. They exercise the same code path — 40 hex characters —
+    // without being secret-shaped, so the scanner does not flag its own tests.
+
+    const SHA_A: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const SHA_B: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
     #[test]
-    fn non_secret_action_pin() {
-        assert!(is_known_non_secret_hex(
-            "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
-        ));
+    fn action_pin_plain() {
+        assert_eq!(
+            pinned_action_sha(
+                "      - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ),
+            Some(SHA_A)
+        );
     }
 
     #[test]
-    fn non_secret_action_pin_with_version_comment() {
-        assert!(is_known_non_secret_hex(
-            "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1"
-        ));
+    fn action_pin_with_version_comment() {
+        assert_eq!(
+            pinned_action_sha(
+                "      - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa # v7.0.1"
+            ),
+            Some(SHA_A)
+        );
     }
 
     #[test]
-    fn non_secret_reusable_workflow_pin() {
+    fn action_pin_reusable_workflow() {
         // No `- ` sequence marker, and the path itself contains dots and slashes.
-        assert!(is_known_non_secret_hex(
-            "    uses: resq-software/.github/.github/workflows/security-scan.yml@85e7d7cae1d1c9e4d7cc4af42e4c91f69378209d # main"
-        ));
+        assert_eq!(
+            pinned_action_sha(
+                "    uses: resq-software/.github/.github/workflows/security-scan.yml@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb # main"
+            ),
+            Some(SHA_B)
+        );
     }
 
     #[test]
-    fn non_secret_quoted_reusable_workflow_pin() {
-        // YAML-quoted value with the version comment OUTSIDE the closing quote.
-        // The quote sits between the SHA and the comment, so a naive split on
-        // '#' leaves a trailing '"' and measures 41 characters.
-        assert!(is_known_non_secret_hex(
-            r#"    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@9a498708959aeaef5ef730655706c5a1df1edbc2" # v2.3.8"#
-        ));
+    fn action_pin_quoted_reusable_workflow() {
+        // YAML-quoted value with the version comment OUTSIDE the closing quote,
+        // so the quote sits between the SHA and the comment.
+        assert_eq!(
+            pinned_action_sha(
+                r#"    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" # v2.3.8"#
+            ),
+            Some(SHA_B)
+        );
     }
 
     #[test]
-    fn non_secret_single_quoted_pin() {
-        assert!(is_known_non_secret_hex(
-            "      - uses: 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'"
-        ));
+    fn action_pin_single_quoted() {
+        assert_eq!(
+            pinned_action_sha(
+                "      - uses: 'actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'"
+            ),
+            Some(SHA_A)
+        );
+    }
+
+    #[test]
+    fn action_pin_comment_containing_at_sign() {
+        // The comment holds its own `@`. Right-splitting on `@` BEFORE stripping
+        // the comment would pick `v3` here and fail to recognise a valid pin.
+        assert_eq!(
+            pinned_action_sha(
+                "      - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa # see @v3"
+            ),
+            Some(SHA_A)
+        );
+    }
+
+    #[test]
+    fn action_pin_does_not_excuse_a_second_hex_on_the_line() {
+        // A pin must excuse only its own SHA. `scan_line` compares this span
+        // against the regex match, so a token parked in the trailing comment is
+        // a different value and is still reported.
+        let line = "      - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa # token=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+        let sha = pinned_action_sha(line).expect("pin should parse");
+        assert_eq!(sha, SHA_A);
+        assert_ne!(sha, SHA_B);
+    }
+
+    #[test]
+    fn action_pin_rejects_missing_space_after_dash() {
+        // `-uses:` is not valid YAML and must not earn an exemption.
+        assert_eq!(
+            pinned_action_sha(
+                "      -uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ),
+            None
+        );
     }
 
     #[test]
     fn action_pin_requires_uses_key() {
         // Same shape, but not a `uses:` line — must still be reported.
-        assert!(!is_known_non_secret_hex(
-            "    token: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
-        ));
+        assert_eq!(
+            pinned_action_sha(
+                "    token: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ),
+            None
+        );
     }
 
     #[test]
     fn action_pin_requires_forty_hex_chars() {
         // A tag ref is not a pin, and 39 hex chars is not a SHA.
+        assert_eq!(pinned_action_sha("      - uses: actions/checkout@v7"), None);
+        assert_eq!(
+            pinned_action_sha(
+                "      - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn non_secret_hex_no_longer_covers_pins() {
+        // The pin path moved out of is_known_non_secret_hex so the caller can
+        // compare spans. This guards against it drifting back in.
         assert!(!is_known_non_secret_hex(
-            "      - uses: actions/checkout@v7"
-        ));
-        assert!(!is_known_non_secret_hex(
-            "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b"
+            "      - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         ));
     }
 
@@ -1274,38 +1367,49 @@ mod tests {
 
     #[test]
     fn allowlisted_content_match() {
-        let finding = Finding {
-            file: "src/config.rs".to_string(),
-            line: 10,
-            rule: "test".to_string(),
-            content: "api_key = AKIA1234567890ABCDEF".to_string(),
-        };
         let allowlist = vec!["AKIA1234567890ABCDEF".to_string()];
-        assert!(is_allowlisted(&finding, &allowlist));
+        assert!(is_allowlisted(
+            "api_key = AKIA1234567890ABCDEF",
+            "src/config.rs",
+            &allowlist
+        ));
     }
 
     #[test]
     fn allowlisted_file_match() {
-        let finding = Finding {
-            file: "tests/fixtures/secrets.txt".to_string(),
-            line: 1,
-            rule: "test".to_string(),
-            content: "secret here".to_string(),
-        };
         let allowlist = vec!["tests/fixtures".to_string()];
-        assert!(is_allowlisted(&finding, &allowlist));
+        assert!(is_allowlisted(
+            "secret here",
+            "tests/fixtures/secrets.txt",
+            &allowlist
+        ));
     }
 
     #[test]
     fn allowlisted_no_match() {
-        let finding = Finding {
-            file: "src/main.rs".to_string(),
-            line: 5,
-            rule: "test".to_string(),
-            content: "ghp_abcdef1234567890abcdef1234567890abcd".to_string(),
-        };
         let allowlist = vec!["unrelated-pattern".to_string()];
-        assert!(!is_allowlisted(&finding, &allowlist));
+        assert!(!is_allowlisted(
+            "ghp_abcdef1234567890abcdef1234567890abcd",
+            "src/main.rs",
+            &allowlist
+        ));
+    }
+
+    #[test]
+    fn allowlist_matches_mid_line_text_that_redaction_would_hide() {
+        // Regression: matching used to run against `redact_line(line)`, which
+        // keeps only the first min(10, len/4) and last min(6, len/6) chars. A
+        // pattern sitting in the middle of a long line was therefore invisible,
+        // and whether an entry worked depended on the line's length rather than
+        // its content.
+        let line = "            some_prefix_padding_here = \"MARKER_IN_THE_MIDDLE\", // trailing padding text";
+        assert!(redact_line(line).contains("REDACTED"), "line must redact");
+        assert!(!redact_line(line).contains("MARKER_IN_THE_MIDDLE"));
+        assert!(is_allowlisted(
+            line,
+            "src/whatever.rs",
+            &["MARKER_IN_THE_MIDDLE".to_string()]
+        ));
     }
 
     // ── redact_line ──────────────────────────────────────────────────────────
