@@ -574,10 +574,14 @@ fn is_pinned_action_ref(lower: &str) -> bool {
         return false;
     };
     // A trailing `# v1.2.3` version comment is conventional on pinned refs.
+    // The value may also be YAML-quoted, in which case the closing quote sits
+    // between the SHA and that comment — `uses: "owner/repo@<sha>" # v1.2.3` —
+    // so strip quotes after splitting off the comment, not before.
     let sha = after_at
         .split_once('#')
         .map_or(after_at, |(before, _)| before)
-        .trim();
+        .trim()
+        .trim_matches(|c| c == '"' || c == '\'');
     sha.len() == 40 && sha.chars().all(|c| c.is_ascii_hexdigit())
 }
 
@@ -1181,6 +1185,23 @@ mod tests {
         // No `- ` sequence marker, and the path itself contains dots and slashes.
         assert!(is_known_non_secret_hex(
             "    uses: resq-software/.github/.github/workflows/security-scan.yml@85e7d7cae1d1c9e4d7cc4af42e4c91f69378209d # main"
+        ));
+    }
+
+    #[test]
+    fn non_secret_quoted_reusable_workflow_pin() {
+        // YAML-quoted value with the version comment OUTSIDE the closing quote.
+        // The quote sits between the SHA and the comment, so a naive split on
+        // '#' leaves a trailing '"' and measures 41 characters.
+        assert!(is_known_non_secret_hex(
+            r#"    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@9a498708959aeaef5ef730655706c5a1df1edbc2" # v2.3.8"#
+        ));
+    }
+
+    #[test]
+    fn non_secret_single_quoted_pin() {
+        assert!(is_known_non_secret_hex(
+            "      - uses: 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'"
         ));
     }
 
