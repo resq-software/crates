@@ -85,49 +85,51 @@ fn color_to_ansi_fg(color: ratatui::style::Color) -> String {
 // Format functions — return styled strings
 // ---------------------------------------------------------------------------
 
+/// Prefixes an already-styled message with an emoji (trailing space included).
+fn format_message(prefix: &str, styled: &str) -> String {
+    format!("{prefix}{styled}")
+}
+
 /// Formats a success message: `✅ <message>`
 #[must_use]
 pub fn format_success(message: &str) -> String {
-    format!("✅ {}", style_fg(message, theme::COLOR_SUCCESS.resolve()))
+    format_message("✅ ", &style_fg(message, theme::COLOR_SUCCESS.resolve()))
 }
 
 /// Formats an error message: `❌ <message>`
 #[must_use]
 pub fn format_error(message: &str) -> String {
-    format!("❌ {}", style_bold(message, theme::COLOR_ERROR.resolve()))
+    format_message("❌ ", &style_bold(message, theme::COLOR_ERROR.resolve()))
 }
 
 /// Formats a warning message: `⚠️  <message>`
 #[must_use]
 pub fn format_warning(message: &str) -> String {
-    format!("⚠️  {}", style_fg(message, theme::COLOR_WARNING.resolve()))
+    format_message("⚠️  ", &style_fg(message, theme::COLOR_WARNING.resolve()))
 }
 
 /// Formats an info message: `ℹ️  <message>`
 #[must_use]
 pub fn format_info(message: &str) -> String {
-    format!("ℹ️  {}", style_fg(message, theme::COLOR_PRIMARY.resolve()))
+    format_message("ℹ️  ", &style_fg(message, theme::COLOR_PRIMARY.resolve()))
 }
 
 /// Formats a command reference: `▶ <command>`
 #[must_use]
 pub fn format_command(command: &str) -> String {
-    format!(
-        "▶ {}",
-        style_bold(command, theme::COLOR_SECONDARY.resolve())
-    )
+    format_message("▶ ", &style_bold(command, theme::COLOR_SECONDARY.resolve()))
 }
 
 /// Formats a progress/in-flight message: `⏳ <message>`
 #[must_use]
 pub fn format_progress(message: &str) -> String {
-    format!("⏳ {}", style_fg(message, theme::COLOR_WARNING.resolve()))
+    format_message("⏳ ", &style_fg(message, theme::COLOR_WARNING.resolve()))
 }
 
 /// Formats a prompt message: `? <message>`
 #[must_use]
 pub fn format_prompt(message: &str) -> String {
-    format!("? {}", style_bold(message, theme::COLOR_PRIMARY.resolve()))
+    format_message("? ", &style_bold(message, theme::COLOR_PRIMARY.resolve()))
 }
 
 /// Formats a verbose/debug message (dim).
@@ -156,13 +158,13 @@ pub fn format_section_header(header: &str) -> String {
 /// Formats a count/metric message: `📊 <message>`
 #[must_use]
 pub fn format_count(message: &str) -> String {
-    format!("📊 {}", style_fg(message, theme::COLOR_ACCENT.resolve()))
+    format_message("📊 ", &style_fg(message, theme::COLOR_ACCENT.resolve()))
 }
 
 /// Formats a location/path message: `📁 <message>`
 #[must_use]
 pub fn format_location(message: &str) -> String {
-    format!("📁 {}", style_fg(message, theme::COLOR_SECONDARY.resolve()))
+    format_message("📁 ", &style_fg(message, theme::COLOR_SECONDARY.resolve()))
 }
 
 /// Formats a list header.
@@ -174,7 +176,7 @@ pub fn format_list_header(header: &str) -> String {
 /// Formats a search/scan message: `🔍 <message>`
 #[must_use]
 pub fn format_search(message: &str) -> String {
-    format!("🔍 {}", style_fg(message, theme::COLOR_PRIMARY.resolve()))
+    format_message("🔍 ", &style_fg(message, theme::COLOR_PRIMARY.resolve()))
 }
 
 // ---------------------------------------------------------------------------
