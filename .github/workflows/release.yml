@@ -54,6 +54,20 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
+          # REQUIRED when this action is pinned by SHA. Normally it takes the
+          # toolchain from the ref name — dtolnay/rust-toolchain@stable means
+          # "install stable". Pinning to a commit, which is right for an action
+          # that compiles the binaries we ship, removes that signal, and the
+          # action then demands the input explicitly:
+          #
+          #   env:
+          #     toolchain:
+          #   'toolchain' is a required input
+          #
+          # Without it every target fails at the first step. This workflow has
+          # been red since 2026-04-14 for that reason alone, which is why no
+          # resq-cli release has ever carried binaries.
+          toolchain: stable
           targets: ${{ matrix.target }}
 
       - name: Install cross (linux arm64)
