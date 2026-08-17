@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0](https://github.com/resq-software/crates/releases/tag/0.4.0) - 2026-08-17
+
+### Fixed
+
+- *(secrets)* Stop flagging SHA-pinned Action refs as high-entropy secrets ([#171](https://github.com/resq-software/crates/pull/171))
+- *(hooks)* Stop copyright rewriting canonical hooks, and fix four template defects ([#170](https://github.com/resq-software/crates/pull/170))
+- *(pre-commit)* Scope the copyright step to staged files, and unbreak copyright/secrets ([#169](https://github.com/resq-software/crates/pull/169))
+
+### Miscellaneous
+
+- Remove resq-deploy, resq-health, resq-logs crates ([#139](https://github.com/resq-software/crates/pull/139))
+
+
+
 ## [0.4.0](https://github.com/resq-software/crates/releases/tag/0.4.0) - 2026-08-10
 
 ### Miscellaneous
