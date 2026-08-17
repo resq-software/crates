@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.19](https://github.com/resq-software/crates/releases/tag/0.1.19) - 2026-08-17
+
+### Dependencies
+
+- *(deps)* Bump object from 0.39.1 to 0.40.0 ([#168](https://github.com/resq-software/crates/pull/168))
+
+
+
 ## [0.1.19](https://github.com/resq-software/crates/releases/tag/0.1.19) - 2026-08-10
 
 ### Miscellaneous
