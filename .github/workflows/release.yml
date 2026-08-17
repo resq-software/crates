@@ -1,8 +1,16 @@
-# Copyright 2026 ResQ
-# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 ResQ Systems, Inc.
 #
-# Build and publish resq-cli binaries to a GitHub Release on tag push.
-# Tag format:  resq-cli-v<semver>  (e.g. resq-cli-v0.3.0)
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 name: release
 
@@ -15,12 +23,51 @@ on:
       tag:
         description: 'Existing tag to build (e.g. resq-cli-v0.3.0)'
         required: true
+      # Dispatch exists so the build can be exercised WITHOUT shipping, which
+      # is exactly what it could not do before: `publish` had no event gate, so
+      # every manual run created and published a release under whatever tag was
+      # typed. The org enforces immutable releases, so that result cannot be
+      # deleted — a single wrong dispatch was permanent.
+      #
+      # Defaults to true. The safe option has to be the one you get by pressing
+      # "Run workflow" without reading anything.
+      dry_run:
+        description: 'Build only — do not create or publish a release'
+        type: boolean
+        default: true
 
 permissions: {}
 
 jobs:
+  # The dispatch input is a free-text ref that reaches `actions/checkout` and,
+  # on a publishing run, names the release that gets created. Any tag in the
+  # repo satisfies it, so `resq-tui-v0.1.10` would build resq-cli binaries and
+  # publish them under a TUI tag — and an immutable release cannot be taken
+  # back. One cheap job, once, rather than the same check five times in the
+  # matrix.
+  guard:
+    name: validate tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Tag must name a resq-cli release
+        env:
+          # Via env, never inlined into the script: ${{ }} interpolation happens
+          # before the shell sees the line, so a crafted value would otherwise
+          # be executed rather than compared.
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -eu
+          case "$TAG" in
+            resq-cli-v*) printf 'ok  %s\n' "$TAG" ;;
+            *)
+              printf '::error::Refusing to build %s — this workflow releases resq-cli, and the tag must start with resq-cli-v.\n' "$TAG"
+              exit 1
+              ;;
+          esac
+
   build:
     name: build ${{ matrix.target }}
+    needs: guard
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -125,6 +172,26 @@ jobs:
   publish:
     name: publish release
     needs: build
+    # Publishes on a tag push, or on a dispatch that explicitly asked for it.
+    #
+    # Both false forms are matched on purpose. `gh workflow run -f dry_run=false`
+    # sends the value over the API as the STRING "false", and whether Actions
+    # coerces that back to a boolean for the `inputs` context — given `type:
+    # boolean` is declared — is inconsistent enough to be worth not betting a
+    # release on. `github.event.inputs` is documented to stringify regardless.
+    # Checking both costs one comparison; getting it wrong means release-plz
+    # dispatches, five targets build green, and nothing is ever published.
+    #
+    # The event check stays first because `inputs` is undefined on a push: `||`
+    # returns the first truthy operand, so that case never evaluates an input.
+    #
+    # Note the asymmetry — a wrong answer here fails in the safe direction
+    # (nothing ships) but silently, which is why it is spelled out rather than
+    # left to coercion.
+    if: >-
+      ${{ github.event_name == 'push'
+          || inputs.dry_run == false
+          || inputs.dry_run == 'false' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
