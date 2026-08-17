@@ -172,12 +172,26 @@ jobs:
   publish:
     name: publish release
     needs: build
-    # A tag push always publishes — that is the release path and it is
-    # unchanged. A manual dispatch publishes only when dry_run was explicitly
-    # turned off. `inputs` is undefined on a push event, so the event check has
-    # to come first: `||` returns the first truthy operand, so the push case
-    # never evaluates the input at all.
-    if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
+    # Publishes on a tag push, or on a dispatch that explicitly asked for it.
+    #
+    # Both false forms are matched on purpose. `gh workflow run -f dry_run=false`
+    # sends the value over the API as the STRING "false", and whether Actions
+    # coerces that back to a boolean for the `inputs` context — given `type:
+    # boolean` is declared — is inconsistent enough to be worth not betting a
+    # release on. `github.event.inputs` is documented to stringify regardless.
+    # Checking both costs one comparison; getting it wrong means release-plz
+    # dispatches, five targets build green, and nothing is ever published.
+    #
+    # The event check stays first because `inputs` is undefined on a push: `||`
+    # returns the first truthy operand, so that case never evaluates an input.
+    #
+    # Note the asymmetry — a wrong answer here fails in the safe direction
+    # (nothing ships) but silently, which is why it is spelled out rather than
+    # left to coercion.
+    if: >-
+      ${{ github.event_name == 'push'
+          || inputs.dry_run == false
+          || inputs.dry_run == 'false' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

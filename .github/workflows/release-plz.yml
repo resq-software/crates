@@ -1,3 +1,17 @@
+# Copyright 2026 ResQ Systems, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 name: Release-plz
 
 on:
@@ -54,7 +68,17 @@ jobs:
             | while read -r tag; do
                 [ -z "$tag" ] && continue
                 echo "→ dispatching release.yml for tag=$tag"
+                # dry_run=false is REQUIRED here, not decorative. release.yml
+                # defaults it to true so that a human pressing "Run workflow"
+                # cannot accidentally publish an immutable release. This
+                # dispatch is the one caller that genuinely means to publish —
+                # and because the tag above was pushed by GITHUB_TOKEN, the
+                # `on: push: tags:` path never fires, so this is the ONLY way a
+                # resq-cli release is ever produced. Omitting it would take the
+                # safe default and silently ship nothing: five green builds and
+                # no release.
                 gh workflow run release.yml \
                   --repo "$GITHUB_REPOSITORY" \
-                  -f tag="$tag"
+                  -f tag="$tag" \
+                  -f dry_run=false
               done
