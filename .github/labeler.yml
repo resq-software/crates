@@ -12,18 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Crate labels
-"crate:resq-dsa":
+# ── Crate scope labels (one per crates/* member) ────────────────────────
+"crate:resq-ai":
   - changed-files:
-    - any-glob-to-any-file: crates/resq-dsa/**/*
-
-"crate:resq-cli":
-  - changed-files:
-    - any-glob-to-any-file: crates/resq-cli/**/*
-
-"crate:resq-tui":
-  - changed-files:
-    - any-glob-to-any-file: crates/resq-tui/**/*
+    - any-glob-to-any-file: crates/resq-ai/**/*
 
 "crate:resq-bin":
   - changed-files:
@@ -33,6 +25,14 @@
   - changed-files:
     - any-glob-to-any-file: crates/resq-clean/**/*
 
+"crate:resq-cli":
+  - changed-files:
+    - any-glob-to-any-file: crates/resq-cli/**/*
+
+"crate:resq-dsa":
+  - changed-files:
+    - any-glob-to-any-file: crates/resq-dsa/**/*
+
 "crate:resq-flame":
   - changed-files:
     - any-glob-to-any-file: crates/resq-flame/**/*
@@ -41,11 +41,28 @@
   - changed-files:
     - any-glob-to-any-file: crates/resq-perf/**/*
 
-# Governance & CI
+"crate:resq-tui":
+  - changed-files:
+    - any-glob-to-any-file: crates/resq-tui/**/*
+
+# ── Area labels ─────────────────────────────────────────────────────────
 "A-DevOps":
   - changed-files:
     - any-glob-to-any-file: .github/**/*
 
+"A-Examples":
+  - changed-files:
+    - any-glob-to-any-file: examples/**/*
+
+"A-Config":
+  - changed-files:
+    - any-glob-to-any-file: config/**/*
+
+"A-Scripts":
+  - changed-files:
+    - any-glob-to-any-file: scripts/**/*
+
+# ── Category labels ─────────────────────────────────────────────────────
 "C-Documentation":
   - changed-files:
     - any-glob-to-any-file: "**/*.md"

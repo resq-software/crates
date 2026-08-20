@@ -40,6 +40,14 @@
   color: "d4c5f9"
   description: Code refactoring with no behavior change
 
+- name: "C-Testing"
+  color: "c2e0c6"
+  description: Tests and test tooling
+
+- name: "C-Chore"
+  color: "ededed"
+  description: "Chore: deps, tooling, or config with no public API change"
+
 - name: "C-Breaking-Change"
   color: "b60205"
   description: Breaking change to the API or behavior
@@ -69,6 +77,52 @@
 - name: "A-DevOps"
   color: "000000"
   description: "CI/CD and tooling"
+
+- name: "A-Examples"
+  color: "1d76db"
+  description: "Example code under examples/"
+
+- name: "A-Config"
+  color: "5319e7"
+  description: "Configuration files under config/"
+
+- name: "A-Scripts"
+  color: "006b75"
+  description: "Automation scripts under scripts/"
+
+# --- Crate scope (crate:) ---
+# Applied by .github/labeler.yml based on which crates/<name>/ changed.
+- name: "crate:resq-ai"
+  color: "c5def5"
+  description: "Changes to the resq-ai crate"
+
+- name: "crate:resq-bin"
+  color: "c5def5"
+  description: "Changes to the resq-bin crate"
+
+- name: "crate:resq-clean"
+  color: "c5def5"
+  description: "Changes to the resq-clean crate"
+
+- name: "crate:resq-cli"
+  color: "c5def5"
+  description: "Changes to the resq-cli crate"
+
+- name: "crate:resq-dsa"
+  color: "c5def5"
+  description: "Changes to the resq-dsa crate"
+
+- name: "crate:resq-flame"
+  color: "c5def5"
+  description: "Changes to the resq-flame crate"
+
+- name: "crate:resq-perf"
+  color: "c5def5"
+  description: "Changes to the resq-perf crate"
+
+- name: "crate:resq-tui"
+  color: "c5def5"
+  description: "Changes to the resq-tui crate"
 
 # --- Dependency automation ---
 - name: "dependencies"
