@@ -40,6 +40,14 @@
   color: "d4c5f9"
   description: Code refactoring with no behavior change
 
+- name: "C-Testing"
+  color: "c2e0c6"
+  description: Tests and test tooling
+
+- name: "C-Chore"
+  color: "ededed"
+  description: "Chore: deps, tooling, or config with no public API change"
+
 - name: "C-Breaking-Change"
   color: "b60205"
   description: Breaking change to the API or behavior
