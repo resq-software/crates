@@ -49,7 +49,7 @@ jobs:
           # (Label Sync may not have run since the label was added). Every other
           # gh failure (auth, permission, rate-limit, network, API) must fail.
           if ! err="$(gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --add-label "$label" 2>&1)"; then
-            if printf '%s' "$err" | grep -qiE 'not found|could not add label'; then
+            if printf '%s' "$err" | grep -qiE "could not add label: ['\"]?${label}['\"]? not found"; then
               echo "::warning::label '$label' not found yet (run Label Sync); skipped."
             else
               printf '%s\n' "$err" >&2
