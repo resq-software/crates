@@ -286,6 +286,20 @@ fn run_npm_audit(root: &Path, args: &AuditArgs, failures: &mut Vec<String>) -> R
 
 // ── Pass 3: React Doctor ──────────────────────────────────────────────────────
 
+/// Builds the `npx react-doctor@latest <target>` invocation shared by both
+/// the diagnostic and score passes, including the optional `--diff <base>`
+/// range.
+fn react_doctor_cmd(args: &AuditArgs, target: &Path) -> Command {
+    let mut cmd = Command::new("npx");
+    cmd.args(["-y", "react-doctor@latest"]).arg(target);
+
+    if let Some(ref base) = args.react_diff {
+        cmd.args(["--diff", base]);
+    }
+
+    cmd
+}
+
 /// Runs `npx react-doctor@latest` against the Next.js web dashboard.
 /// Streams full diagnostic output to the terminal, then does a second
 /// lightweight `--score` pass to enforce the numeric health threshold.
@@ -306,31 +320,18 @@ fn run_react_doctor(root: &Path, args: &AuditArgs, failures: &mut Vec<String>) {
     // ── Full diagnostic run ───────────────────────────────────────────────────
     println!("  🏥 Diagnosing: {} ...\n", target.display());
 
-    let mut full_cmd = Command::new("npx");
-    full_cmd
-        .args(["-y", "react-doctor@latest"])
-        .arg(&target)
-        .args(["--verbose", "--yes"]);
-
-    if let Some(ref base) = args.react_diff {
-        full_cmd.args(["--diff", base]);
-    }
+    let mut full_cmd = react_doctor_cmd(args, &target);
+    full_cmd.args(["--verbose", "--yes"]);
 
     // Inherit stdio — let react-doctor write directly to the terminal.
     let _ = full_cmd.status();
 
     // ── Score check ───────────────────────────────────────────────────────────
-    let mut score_cmd = Command::new("npx");
+    let mut score_cmd = react_doctor_cmd(args, &target);
     score_cmd
-        .args(["-y", "react-doctor@latest"])
-        .arg(&target)
         .args(["--score", "--yes"])
         .stdout(Stdio::piped())
         .stderr(Stdio::null());
-
-    if let Some(ref base) = args.react_diff {
-        score_cmd.args(["--diff", base]);
-    }
 
     let score: Option<u8> = score_cmd
         .output()
