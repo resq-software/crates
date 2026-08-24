@@ -2114,7 +2114,7 @@ dependencies = [
 
 [[package]]
 name = "resq-bin"
-version = "0.1.19"
+version = "0.1.20"
 dependencies = [
  "anyhow",
  "capstone",
@@ -2133,7 +2133,7 @@ dependencies = [
 
 [[package]]
 name = "resq-clean"
-version = "0.1.19"
+version = "0.1.20"
 dependencies = [
  "anyhow",
  "clap",
@@ -2147,7 +2147,7 @@ dependencies = [
 
 [[package]]
 name = "resq-cli"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "aho-corasick",
  "anyhow",
@@ -2186,7 +2186,7 @@ dependencies = [
 
 [[package]]
 name = "resq-flame"
-version = "0.1.19"
+version = "0.1.20"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2204,7 +2204,7 @@ dependencies = [
 
 [[package]]
 name = "resq-perf"
-version = "0.1.19"
+version = "0.1.20"
 dependencies = [
  "addr2line",
  "anyhow",
@@ -2220,7 +2220,7 @@ dependencies = [
 
 [[package]]
 name = "resq-tui"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "anyhow",
  "crossterm",
