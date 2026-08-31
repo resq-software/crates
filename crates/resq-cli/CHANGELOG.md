@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1](https://github.com/resq-software/crates/releases/tag/0.4.1) - 2026-08-31
+
+### Fixed
+
+- Resolve failing CI (run 32567831345) ([#186](https://github.com/resq-software/crates/pull/186))
+
+
+
 ## [0.4.1](https://github.com/resq-software/crates/releases/tag/0.4.1) - 2026-08-24
 
 
