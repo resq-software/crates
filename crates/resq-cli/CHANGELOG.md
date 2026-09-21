@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.4.3](https://github.com/resq-software/crates/releases/tag/0.4.3) - 2026-09-21
+
+### Added
+
+- *(hooks)* Make GIT_HOOKS_SKIP granular and fail-closed ([#206](https://github.com/resq-software/crates/pull/206))
+
+### Testing
+
+- *(cli)* Guard the parser, and fix the `resq commit` verbose collision ([#208](https://github.com/resq-software/crates/pull/208))
+
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
