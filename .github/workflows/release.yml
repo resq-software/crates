@@ -36,6 +36,16 @@ on:
         type: boolean
         default: true
 
+# Keyed on the tag rather than the workflow: two different crates may
+# release concurrently, but the same tag must never have two runs racing to
+# create the same immutable release. `cancel-in-progress: false` is load
+# bearing — a dry-run dispatch must not cancel a real in-flight release and
+# then skip its own publish job, which would destroy the release and ship
+# nothing in its place.
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
 permissions: {}
 
 jobs:
