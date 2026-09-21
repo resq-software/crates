@@ -15,11 +15,33 @@
 name: Release-plz
 
 on:
-  # Weekly release check — every Monday at 06:00 UTC
+  # The canonical release-plz trigger, and the one this pipeline actually
+  # needs. `release-plz release` publishes whatever is unpublished at the
+  # checked-out HEAD; merging the "chore: release" PR is just a push to
+  # master, so with no push trigger that merge produced no workflow run at
+  # all and nothing shipped until the next cron. That is exactly what
+  # happened to #200.
+  push:
+    branches:
+      - master
+  # Retained as a retry net, not the primary path: if a push-triggered run
+  # dies part-way (registry outage, cancelled runner), the next cron re-runs
+  # and publishes the remainder without anyone noticing. Safe to leave on
+  # because `release` is idempotent — with every package already published
+  # it does nothing. Scheduled runs are best-effort and have drifted by
+  # hours here, so they must not be the only path.
   schedule:
     - cron: "0 6 * * 1"
   # Manual trigger for on-demand releases
   workflow_dispatch:
+
+# Publishing to crates.io cannot be undone and GitHub releases are immutable
+# here, so releases are serialised and NEVER cancelled mid-flight. Upstream
+# warns that squash-merging a PR while `release-plz release` is still running
+# races; this repo squash-merges (auto-merge.yml), so the window is real.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -57,7 +79,11 @@ jobs:
       # for each newly-cut resq-cli-v* tag — workflow_dispatch IS allowed
       # from GITHUB_TOKEN, so the hop works without a PAT.
       - name: Dispatch release.yml for new resq-cli-v* tags
-        if: steps.release-plz.outputs.releases != ''
+        # `releases` is the JSON output and is the literal string "[]" when
+        # nothing was released — non-empty, so the old `!= ''` guard was
+        # always true and this step ran on every no-op. `releases_created`
+        # is the purpose-built boolean.
+        if: steps.release-plz.outputs.releases_created == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASES: ${{ steps.release-plz.outputs.releases }}
