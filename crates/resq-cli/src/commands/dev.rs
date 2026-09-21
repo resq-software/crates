@@ -140,9 +140,18 @@ pub fn run_install_hooks_impl() -> Result<()> {
     std::fs::create_dir_all(&hooks_dir)
         .with_context(|| format!("Failed to create {}", hooks_dir.display()))?;
     let mut scaffolded = 0u32;
+    let mut drifted: Vec<&str> = Vec::new();
     for (name, body) in HOOK_TEMPLATES {
         let dest = hooks_dir.join(name);
         if dest.exists() {
+            // Preserving an existing hook is deliberate, but staying SILENT
+            // about it is not: a clone carrying an outdated hook would other-
+            // wise be told "hooks installed" while keeping the old behaviour.
+            // That is how a security fix to a template fails to reach the
+            // repos that need it. Record drift and report it below.
+            if std::fs::read_to_string(&dest).is_ok_and(|c| c != *body) {
+                drifted.push(name);
+            }
             continue;
         }
         std::fs::write(&dest, body)
@@ -153,6 +162,20 @@ pub fn run_install_hooks_impl() -> Result<()> {
     }
     if scaffolded > 0 {
         println!("📝 Scaffolded {scaffolded} canonical hook(s) from embedded templates.");
+    }
+    if !drifted.is_empty() {
+        eprintln!();
+        eprintln!(
+            "⚠️  {} existing hook(s) DIFFER from the canonical templates and were",
+            drifted.len()
+        );
+        eprintln!("   left untouched: {}", drifted.join(", "));
+        eprintln!("   They may predate a fix shipped in these templates — installing did");
+        eprintln!("   NOT update them.");
+        eprintln!("     review:   resq hooks doctor");
+        eprintln!("     overwrite: resq hooks update");
+        eprintln!("   To keep a deliberate customisation, move it to .git-hooks/local-<hook>");
+        eprintln!("   first — canonical hooks exec that after their own checks.");
     }
 
     println!("🔧 Setting up ResQ git hooks...");
