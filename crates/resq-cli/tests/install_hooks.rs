@@ -252,3 +252,32 @@ fn scaffold_local_hook_rejects_unknown_explicit_kind() {
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(stderr.contains("Unknown --kind"), "stderr = {stderr}");
 }
+
+/// An installed hook is an arbitrary executable file, so the drift check must
+/// compare bytes rather than go through `read_to_string` — which returns `Err`
+/// on any non-UTF-8 byte and, via `is_ok_and`, reads as "no drift". Without
+/// this, the hook least likely to be canonical is the one silently reported as
+/// canonical.
+#[test]
+fn install_hooks_reports_drift_for_non_utf8_hook() {
+    let tmp = init_repo();
+    std::fs::create_dir(tmp.path().join(".git-hooks")).unwrap();
+    let pre_commit = tmp.path().join(".git-hooks").join("pre-commit");
+    // 0xFF / 0xFE are not valid UTF-8 in any position.
+    std::fs::write(&pre_commit, b"#!/bin/sh\n\xff\xfe not utf-8\n").unwrap();
+
+    let out = resq(tmp.path(), &["dev", "install-hooks"]);
+    assert!(out.status.success());
+
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("pre-commit") && stderr.contains("DIFFER"),
+        "drift went unreported for a non-UTF-8 hook; stderr was:\n{stderr}"
+    );
+
+    // Still preserved, not overwritten.
+    assert_eq!(
+        std::fs::read(&pre_commit).unwrap(),
+        b"#!/bin/sh\n\xff\xfe not utf-8\n"
+    );
+}

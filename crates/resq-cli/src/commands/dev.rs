@@ -149,7 +149,13 @@ pub fn run_install_hooks_impl() -> Result<()> {
             // wise be told "hooks installed" while keeping the old behaviour.
             // That is how a security fix to a template fails to reach the
             // repos that need it. Record drift and report it below.
-            if std::fs::read_to_string(&dest).is_ok_and(|c| c != *body) {
+            //
+            // Compared as bytes, not as a `String`: an installed hook is an
+            // arbitrary executable file, and `read_to_string` returns `Err` on
+            // any non-UTF-8 byte. Through `is_ok_and` that reads as "no drift",
+            // so the one hook most likely to be foreign would be the one
+            // silently reported as canonical.
+            if std::fs::read(&dest).is_ok_and(|c| c != body.as_bytes()) {
                 drifted.push(name);
             }
             continue;
