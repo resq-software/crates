@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 ResQ
+ * Copyright 2026 ResQ Systems, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,13 @@ pub struct CommitArgs {
     timeout: u64,
 
     /// Show prompt, token count, and raw LLM response
-    #[arg(long)]
+    ///
+    /// The root `--verbose` is a global counted `u8`; declaring a second
+    /// `verbose` here shadowed it, so the root's own
+    /// `remove_one::<u8>("verbose")` read a `bool` and panicked — aborting
+    /// every `resq commit` invocation before it reached this code. The root
+    /// flag owns `--verbose`; subcommands keep `-v`.
+    #[arg(short = 'v', id = "commit_verbose")]
     verbose: bool,
 }
 
