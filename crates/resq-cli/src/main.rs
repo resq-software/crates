@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 ResQ
+ * Copyright 2026 ResQ Systems, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -248,4 +248,64 @@ async fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Cli;
+    use clap::{CommandFactory, Parser};
+
+    /// Collect the argv path of every leaf subcommand in the tree.
+    fn leaf_paths(cmd: &clap::Command, prefix: &mut Vec<String>, out: &mut Vec<Vec<String>>) {
+        let mut any = false;
+        for sub in cmd.get_subcommands() {
+            any = true;
+            prefix.push(sub.get_name().to_string());
+            leaf_paths(sub, prefix, out);
+            prefix.pop();
+        }
+        if !any && !prefix.is_empty() {
+            out.push(prefix.clone());
+        }
+    }
+
+    /// Rejects definitions clap can build but cannot parse: duplicate argument
+    /// ids, conflicting shorts, a subcommand named twice.
+    ///
+    /// Note what this does NOT catch — see `every_subcommand_parses`.
+    #[test]
+    fn cli_definition_is_valid() {
+        Cli::command().debug_assert();
+    }
+
+    /// Parse every subcommand in the tree. An `Err` is fine — most take
+    /// required arguments — but a panic is not.
+    ///
+    /// This guards a real regression. The global `--verbose` (`u8`, counted)
+    /// once collided with a subcommand's own `verbose: bool`. clap merges the
+    /// two definitions into a command that builds cleanly, so
+    /// `Command::debug_assert` passes; the mismatch only surfaces when
+    /// `from_arg_matches` downcasts the value, which happens at runtime inside
+    /// the handler. `resq secrets`, `resq copyright` and `resq commit` each
+    /// aborted with exit 101 and shipped that way across three releases,
+    /// because every test exercised library functions and none of them built
+    /// the parser. `--help` short-circuits before the downcast and exits 0, so
+    /// manual smoke-testing missed it too.
+    ///
+    /// Walking the tree rather than listing names means a subcommand added
+    /// later is covered without anyone remembering to add it here.
+    #[test]
+    fn every_subcommand_parses() {
+        let cmd = Cli::command();
+        let mut paths = Vec::new();
+        leaf_paths(&cmd, &mut Vec::new(), &mut paths);
+        assert!(!paths.is_empty(), "no subcommands discovered");
+
+        for path in &paths {
+            let mut argv = vec!["resq".to_string()];
+            argv.extend(path.iter().cloned());
+            // Discard the result: only a panic is a failure here.
+            let _ = Cli::try_parse_from(&argv);
+        }
+    }
 }
