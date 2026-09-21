@@ -26,7 +26,7 @@ body = """
 {%- endmacro -%}
 
 {% if version -%}
-    ## [{{ version | trim_start_matches(pat="v") }}]({{ self::remote_url() }}/releases/tag/{{ version }}) - {{ timestamp | date(format="%Y-%m-%d") }}
+    ## [{{ version }}]({{ self::remote_url() }}/releases/tag/{{ package }}-v{{ version }}) - {{ timestamp | date(format="%Y-%m-%d") }}
 {% else -%}
     ## [Unreleased]
 {% endif -%}
@@ -48,7 +48,12 @@ filter_unconventional = true
 split_commits = false
 protect_breaking_commits = true
 filter_commits = true
-tag_pattern = "v[0-9].*"
+# Inert under release-plz: it builds the release itself and calls git-cliff's
+# changelog API, which never reads `tag_pattern` — only the git-cliff CLI's
+# repo scan does. Corrected anyway so it describes the scheme release-plz
+# actually tags with (`<crate>-v<semver>`, per its default `git_tag_name`)
+# rather than a bare-`v` scheme this repo has never used.
+tag_pattern = "^[a-z0-9-]+-v[0-9].*"
 topo_order = false
 sort_commits = "newest"
 
