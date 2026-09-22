@@ -28,12 +28,39 @@ publish = true
 name = "resq-tui"
 publish = true
 
-# CLI has independent versioning.
-# Skip GitHub Release creation — release.yml (dispatched by release-plz.yml)
-# creates the release as a draft, attaches the cross-platform binaries, and
-# only then publishes. Required because the org enforces "immutable
-# releases": releases can only be edited while still draft.
+# Binary crates: release.yml (dispatched by release-plz.yml) creates the
+# release as a draft, attaches the cross-platform binaries, and only then
+# publishes.
+#
+# `git_release_enable = false` here is load bearing, not a preference. The org
+# enforces "immutable releases", so a release can only be edited while it is
+# still a draft. If release-plz creates and publishes the release first,
+# release.yml can never attach anything to it — which is exactly why
+# resq-bin, resq-clean, resq-flame and resq-perf shipped `assets: 0` on every
+# release up to v0.1.22 while inheriting the [workspace] default of true.
+#
+# Keep this list in step with the allowlist in release.yml's `guard` job.
 [[package]]
 name = "resq-cli"
+publish = true
+git_release_enable = false
+
+[[package]]
+name = "resq-bin"
+publish = true
+git_release_enable = false
+
+[[package]]
+name = "resq-clean"
+publish = true
+git_release_enable = false
+
+[[package]]
+name = "resq-flame"
+publish = true
+git_release_enable = false
+
+[[package]]
+name = "resq-perf"
 publish = true
 git_release_enable = false
