@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.7](https://github.com/resq-software/crates/releases/tag/resq-cli-v0.4.7) - 2026-09-22
+
+### Fixed
+
+- *(changelog)* Stop the release loop by matching cliff's header ([#226](https://github.com/resq-software/crates/pull/226))
+
+
+
 ## [0.4.6](https://github.com/resq-software/crates/releases/tag/resq-cli-v0.4.6) - 2026-09-22
 
 ## [0.4.5](https://github.com/resq-software/crates/releases/tag/resq-cli-v0.4.5) - 2026-09-22
