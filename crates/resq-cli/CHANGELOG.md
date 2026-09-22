@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.4](https://github.com/resq-software/crates/releases/tag/resq-cli-v0.4.4) - 2026-09-22
+
+
+
 ## [0.4.3](https://github.com/resq-software/crates/releases/tag/0.4.3) - 2026-09-21
 
 ### Added
