@@ -10,6 +10,14 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [0.1.18](https://github.com/resq-software/crates/releases/tag/resq-tui-v0.1.18) - 2026-09-22
+
+### Fixed
+
+- *(changelog)* Stop the release loop by matching cliff's header ([#226](https://github.com/resq-software/crates/pull/226))
+
+
+
 ## [0.1.17](https://github.com/resq-software/crates/releases/tag/resq-tui-v0.1.17) - 2026-09-22
 
 ## [0.1.16](https://github.com/resq-software/crates/releases/tag/resq-tui-v0.1.16) - 2026-09-22
