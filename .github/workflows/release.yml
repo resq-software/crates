@@ -58,8 +58,11 @@ jobs:
   guard:
     name: validate tag
     runs-on: ubuntu-latest
+    outputs:
+      crate: ${{ steps.check.outputs.crate }}
     steps:
-      - name: Tag must name a resq-cli release
+      - name: Tag must name a releasable binary crate
+        id: check
         env:
           # Via env, never inlined into the script: ${{ }} interpolation happens
           # before the shell sees the line, so a crafted value would otherwise
@@ -67,13 +70,24 @@ jobs:
           TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
           set -eu
+          # An allowlist, not a pattern. Every crate named here must declare a
+          # [[bin]] AND must carry `git_release_enable = false` in
+          # release-plz.toml: this workflow owns the draft -> upload -> publish
+          # lifecycle, and a release that release-plz has already published is
+          # immutable, so assets could never be attached to it afterwards.
           case "$TAG" in
-            resq-cli-v*) printf 'ok  %s\n' "$TAG" ;;
+            resq-cli-v*|resq-bin-v*|resq-clean-v*|resq-flame-v*|resq-perf-v*) ;;
             *)
-              printf '::error::Refusing to build %s — this workflow releases resq-cli, and the tag must start with resq-cli-v.\n' "$TAG"
+              printf '::error::Refusing to build %s — tag must be <crate>-v<version> for one of: resq-cli, resq-bin, resq-clean, resq-flame, resq-perf.\n' "$TAG"
               exit 1
               ;;
           esac
+          # resq-cli-v0.4.3 -> resq-cli. `%-v*` trims the shortest match from
+          # the right, so a version string cannot truncate the crate name at
+          # the wrong field.
+          crate="${TAG%-v*}"
+          printf 'ok  %s (crate=%s)\n' "$TAG" "$crate"
+          echo "crate=$crate" >> "$GITHUB_OUTPUT"
 
   build:
     name: build ${{ matrix.target }}
@@ -141,11 +155,12 @@ jobs:
         env:
           USE_CROSS: ${{ matrix.cross }}
           BUILD_TARGET: ${{ matrix.target }}
+          CRATE: ${{ needs.guard.outputs.crate }}
         run: |
           if [ "$USE_CROSS" = "true" ]; then
-            cross build --release -p resq-cli --target "$BUILD_TARGET"
+            cross build --release -p "$CRATE" --target "$BUILD_TARGET"
           else
-            cargo build --release -p resq-cli --target "$BUILD_TARGET"
+            cargo build --release -p "$CRATE" --target "$BUILD_TARGET"
           fi
 
       - name: Package
@@ -156,11 +171,34 @@ jobs:
           ARCHIVE_FMT: ${{ matrix.archive }}
           BUILD_TARGET: ${{ matrix.target }}
           TAG_NAME: ${{ github.event.inputs.tag || github.ref_name }}
+          CRATE: ${{ needs.guard.outputs.crate }}
         run: |
-          bin="resq"
+          # Read the binary name from cargo metadata rather than assuming it
+          # matches the crate. It does not for resq-cli, whose [[bin]] is
+          # `resq` — hardcoding the crate name here would look right and fail
+          # at the `cp` below for exactly one crate.
+          bin=$(cargo metadata --no-deps --format-version 1 \
+            | jq -r --arg c "$CRATE" \
+                '.packages[] | select(.name == $c) | .targets[]
+                 | select(.kind | index("bin")) | .name' \
+            | head -1)
+          if [ -z "$bin" ]; then
+            printf '::error::%s declares no [[bin]] target — it cannot be released by this workflow.\n' "$CRATE"
+            exit 1
+          fi
           ext=""
           if [ "$RUNNER_OS" = "Windows" ]; then ext=".exe"; fi
-          staging="resq-cli-${TAG_NAME}-${BUILD_TARGET}"
+          # resq-cli's published assets have carried a doubled prefix since
+          # v0.3.x (resq-cli-resq-cli-v…). Renaming mid-stream would break any
+          # hardcoded download URL at an arbitrary version boundary, and
+          # immutable releases cannot be retrofitted to match — so resq-cli
+          # keeps its historical name. Crates onboarded here have no such
+          # history and start with the clean one.
+          if [ "$CRATE" = "resq-cli" ]; then
+            staging="resq-cli-${TAG_NAME}-${BUILD_TARGET}"
+          else
+            staging="${TAG_NAME}-${BUILD_TARGET}"
+          fi
           mkdir -p "$staging"
           cp "target/${BUILD_TARGET}/release/${bin}${ext}" "$staging/"
           cp README.md LICENSE* "$staging/" 2>/dev/null || true
@@ -219,9 +257,10 @@ jobs:
       # Create as DRAFT first, upload assets, THEN publish. The org
       # enforces "immutable releases", which means a release is locked the
       # moment it's published — so assets must be attached while still
-      # draft. release-plz.toml is configured to skip git_release for
-      # resq-cli specifically, so this workflow owns the release lifecycle
-      # end-to-end and never collides with release-plz's release object.
+      # draft. Every crate in the guard's allowlist sets
+      # `git_release_enable = false` in release-plz.toml, so this workflow
+      # owns the release lifecycle end-to-end and never collides with
+      # release-plz's release object.
       - name: Create + upload + publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -253,7 +292,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --draft \
             --title "$TAG" \
-            --notes "Binary build for $TAG. Cross-platform resq CLI binaries + SHA256SUMS. Verify with: sha256sum -c SHA256SUMS" \
+            --notes "Binary build for $TAG. Cross-platform binaries + SHA256SUMS. Verify with: sha256sum -c SHA256SUMS" \
             -- *
 
           echo "→ publishing release $TAG (becomes immutable)"

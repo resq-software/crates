@@ -78,7 +78,7 @@ jobs:
       # action's `releases` JSON output and dispatch release.yml explicitly
       # for each newly-cut resq-cli-v* tag — workflow_dispatch IS allowed
       # from GITHUB_TOKEN, so the hop works without a PAT.
-      - name: Dispatch release.yml for new resq-cli-v* tags
+      - name: Dispatch release.yml for new binary-crate tags
         # `releases` is the JSON output and is the literal string "[]" when
         # nothing was released — non-empty, so the old `!= ''` guard was
         # always true and this step ran on every no-op. `releases_created`
@@ -89,8 +89,17 @@ jobs:
           RELEASES: ${{ steps.release-plz.outputs.releases }}
         run: |
           set -euo pipefail
+          # Must match release.yml's `guard` allowlist and the crates carrying
+          # `git_release_enable = false` in release-plz.toml. A crate missing
+          # here gets a tag and a bare release with no binaries; a crate here
+          # but not in release-plz.toml gets its release published by
+          # release-plz first, and release.yml then fails loudly because an
+          # immutable release cannot take new assets.
           echo "$RELEASES" \
-            | jq -r '.[] | select(.package_name == "resq-cli") | .tag' \
+            | jq -r '.[]
+                | select(.package_name
+                    | IN("resq-cli", "resq-bin", "resq-clean", "resq-flame", "resq-perf"))
+                | .tag' \
             | while read -r tag; do
                 [ -z "$tag" ] && continue
                 echo "→ dispatching release.yml for tag=$tag"
