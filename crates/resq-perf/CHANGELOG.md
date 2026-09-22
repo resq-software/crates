@@ -2,64 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [Unreleased]
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-
-
 ## [0.1.25](https://github.com/resq-software/crates/releases/tag/resq-perf-v0.1.25) - 2026-09-22
-
-
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-
 
 ## [0.1.24](https://github.com/resq-software/crates/releases/tag/resq-perf-v0.1.24) - 2026-09-22
 
-
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-
-
 ## [0.1.23](https://github.com/resq-software/crates/releases/tag/resq-perf-v0.1.23) - 2026-09-22
-
-
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-
 
 ## [0.1.22](https://github.com/resq-software/crates/releases/tag/0.1.22) - 2026-09-21
 
-
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-
-
 ## [0.1.21](https://github.com/resq-software/crates/releases/tag/0.1.21) - 2026-09-07
 
-
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-
-
 ## [0.1.20](https://github.com/resq-software/crates/releases/tag/0.1.20) - 2026-08-24
-
-
 
 ## [0.1.19](https://github.com/resq-software/crates/releases/tag/0.1.19) - 2026-08-17
 
@@ -71,46 +24,19 @@ All notable changes to this project will be documented in this file.
 
 - Remove resq-deploy, resq-health, resq-logs crates ([#139](https://github.com/resq-software/crates/pull/139))
 
-
-
 ## [0.1.19](https://github.com/resq-software/crates/releases/tag/0.1.19) - 2026-08-10
 
 ### Miscellaneous
 
 - Remove resq-deploy, resq-health, resq-logs crates ([#139](https://github.com/resq-software/crates/pull/139))
 
-
-
 ## [0.1.18](https://github.com/resq-software/crates/releases/tag/0.1.18) - 2026-07-06
-
-
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-
 
 ## [0.1.17](https://github.com/resq-software/crates/releases/tag/0.1.17) - 2026-06-01
 
-
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-
-
 ## [0.1.16](https://github.com/resq-software/crates/releases/tag/0.1.16) - 2026-05-04
 
-
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-
-
 ## [0.1.15](https://github.com/resq-software/crates/releases/tag/0.1.15) - 2026-04-14
-
-
 
 ## [0.1.14](https://github.com/resq-software/crates/releases/tag/0.1.14) - 2026-04-14
 
@@ -127,8 +53,6 @@ All notable changes to this project will be documented in this file.
 
 - Critical correctness bugs + 39 new tests ([#39](https://github.com/resq-software/crates/pull/39))
 
-
-
 ## [0.1.14](https://github.com/resq-software/crates/releases/tag/0.1.14) - 2026-04-13
 
 ### Added
@@ -143,8 +67,6 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Critical correctness bugs + 39 new tests ([#39](https://github.com/resq-software/crates/pull/39))
-
-
 
 ## [0.1.13](https://github.com/resq-software/crates/compare/resq-perf-v0.1.12...resq-perf-v0.1.13) - 2026-04-08
 
@@ -238,7 +160,6 @@ All notable changes to this project will be documented in this file.
   See the License for the specific language governing permissions and
   limitations under the License.
 -->
-
 
 ## [0.1.1](https://github.com/resq-software/crates/compare/resq-perf-monitor-v0.1.0...resq-perf-monitor-v0.1.1) - 2026-03-13
 

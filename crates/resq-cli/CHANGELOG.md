@@ -2,38 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [Unreleased]
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-
-
 ## [0.4.6](https://github.com/resq-software/crates/releases/tag/resq-cli-v0.4.6) - 2026-09-22
-
-
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-
 
 ## [0.4.5](https://github.com/resq-software/crates/releases/tag/resq-cli-v0.4.5) - 2026-09-22
 
-
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-
-
 ## [0.4.4](https://github.com/resq-software/crates/releases/tag/resq-cli-v0.4.4) - 2026-09-22
 
-
-
 ## [0.4.3](https://github.com/resq-software/crates/releases/tag/0.4.3) - 2026-09-21
 
 ### Added
@@ -44,8 +18,6 @@ All notable changes to this project will be documented in this file.
 
 - *(cli)* Guard the parser, and fix the `resq commit` verbose collision ([#208](https://github.com/resq-software/crates/pull/208))
 
-
-
 ## [0.4.3](https://github.com/resq-software/crates/releases/tag/0.4.3) - 2026-09-21
 
 ### Added
@@ -55,17 +27,8 @@ All notable changes to this project will be documented in this file.
 ### Testing
 
 - *(cli)* Guard the parser, and fix the `resq commit` verbose collision ([#208](https://github.com/resq-software/crates/pull/208))
-
-
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-
 
 ## [0.4.2](https://github.com/resq-software/crates/releases/tag/0.4.2) - 2026-09-07
-
-
 
 ## [0.4.1](https://github.com/resq-software/crates/releases/tag/0.4.1) - 2026-08-31
 
@@ -73,11 +36,7 @@ All notable changes to this project will be documented in this file.
 
 - Resolve failing CI (run 32567831345) ([#186](https://github.com/resq-software/crates/pull/186))
 
-
-
 ## [0.4.1](https://github.com/resq-software/crates/releases/tag/0.4.1) - 2026-08-24
-
-
 
 ## [0.4.0](https://github.com/resq-software/crates/releases/tag/0.4.0) - 2026-08-17
 
@@ -91,19 +50,13 @@ All notable changes to this project will be documented in this file.
 
 - Remove resq-deploy, resq-health, resq-logs crates ([#139](https://github.com/resq-software/crates/pull/139))
 
-
-
 ## [0.4.0](https://github.com/resq-software/crates/releases/tag/0.4.0) - 2026-08-10
 
 ### Miscellaneous
 
 - Remove resq-deploy, resq-health, resq-logs crates ([#139](https://github.com/resq-software/crates/pull/139))
 
-
-
 ## [0.3.2](https://github.com/resq-software/crates/releases/tag/0.3.2) - 2026-07-06
-
-
 
 ## [0.3.1](https://github.com/resq-software/crates/releases/tag/0.3.1) - 2026-06-08
 
@@ -111,15 +64,11 @@ All notable changes to this project will be documented in this file.
 
 - *(deps)* Update shlex requirement from 1.3 to 2.0 ([#98](https://github.com/resq-software/crates/pull/98))
 
-
-
 ## [0.3.1](https://github.com/resq-software/crates/releases/tag/0.3.1) - 2026-06-01
 
 ### Dependencies
 
 - *(deps)* Update shlex requirement from 1.3 to 2.0 ([#98](https://github.com/resq-software/crates/pull/98))
-
-
 
 ## [0.3.0](https://github.com/resq-software/crates/releases/tag/0.3.0) - 2026-05-11
 
@@ -140,8 +89,6 @@ All notable changes to this project will be documented in this file.
 
 - *(cli)* Remove orphaned lqip / cost / tree-shake commands ([#61](https://github.com/resq-software/crates/pull/61))
 
-
-
 ## [0.3.0](https://github.com/resq-software/crates/releases/tag/0.3.0) - 2026-05-04
 
 ### Added
@@ -161,16 +108,7 @@ All notable changes to this project will be documented in this file.
 
 - *(cli)* Remove orphaned lqip / cost / tree-shake commands ([#61](https://github.com/resq-software/crates/pull/61))
 
-
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-
-
 ## [0.2.6](https://github.com/resq-software/crates/releases/tag/0.2.6) - 2026-04-14
-
-
 
 ## [0.2.5](https://github.com/resq-software/crates/releases/tag/0.2.5) - 2026-04-14
 
@@ -188,8 +126,6 @@ All notable changes to this project will be documented in this file.
 
 - *(resq-cli)* Integration tests + fix install-hooks partial-layout bug ([#49](https://github.com/resq-software/crates/pull/49))
 
-
-
 ## [0.2.5](https://github.com/resq-software/crates/releases/tag/0.2.5) - 2026-04-13
 
 ### Added
@@ -199,8 +135,6 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Rename crate directories to match package names, fix stale references, and add comprehensive docs
-
-
 
 ## [0.2.4](https://github.com/resq-software/crates/compare/resq-cli-v0.2.3...resq-cli-v0.2.4) - 2026-04-08
 
@@ -243,7 +177,6 @@ All notable changes to this project will be documented in this file.
   See the License for the specific language governing permissions and
   limitations under the License.
 -->
-
 
 ## [0.2.0](https://github.com/resq-software/crates/compare/resq-cli-v0.1.0...resq-cli-v0.2.0) - 2026-03-15
 
