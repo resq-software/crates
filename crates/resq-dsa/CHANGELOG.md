@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.4](https://github.com/resq-software/crates/releases/tag/resq-dsa-v0.1.4) - 2026-09-22
+
+### Fixed
+
+- *(changelog)* Stop the release loop by matching cliff's header ([#226](https://github.com/resq-software/crates/pull/226))
+
+
+
 ## [0.1.3](https://github.com/resq-software/crates/releases/tag/0.1.3) - 2026-05-04
 
 ### CI
