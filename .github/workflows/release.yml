@@ -68,8 +68,20 @@ jobs:
           # before the shell sees the line, so a crafted value would otherwise
           # be executed rather than compared.
           TAG: ${{ github.event.inputs.tag || github.ref_name }}
+          EVENT: ${{ github.event_name }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          RUN_REF: ${{ github.ref }}
         run: |
           set -eu
+          # Provenance records the commit this run executes at. A publishing
+          # dispatch that runs at a branch would attest that branch's commit,
+          # not the tag the assets are built from, so it must run at the tag.
+          # Dry runs publish nothing and stay free to run from anywhere.
+          if [ "$EVENT" = "workflow_dispatch" ] && [ "$DRY_RUN" = "false" ] \
+              && [ "$RUN_REF" != "refs/tags/$TAG" ]; then
+            printf '::error::A publishing run must execute at refs/tags/%s, not %s. Dispatch with --ref %s ("Use workflow from" the tag).\n' "$TAG" "$RUN_REF" "$TAG"
+            exit 1
+          fi
           # An allowlist, not a pattern. Every crate named here must declare a
           # [[bin]] AND must carry `git_release_enable = false` in
           # release-plz.toml: this workflow owns the draft -> upload -> publish
