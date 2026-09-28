@@ -242,17 +242,48 @@ jobs:
           || inputs.dry_run == 'false' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write      # create the release and upload its assets
+      id-token: write      # sign the provenance attestation (Sigstore OIDC)
+      attestations: write  # record the attestation on this repository
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: dist
           merge-multiple: true
 
+      # Source at the release tag, read only by the SBOM step. Checked out
+      # beside dist/, never into it, so it cannot end up as a release asset.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          path: src
+          persist-credentials: false
+
+      # SPDX SBOM of the source at the tag. It catalogues the workspace
+      # Cargo.lock, a superset of what the one released binary links. Written
+      # into dist/ so SHA256SUMS covers it and the release carries it.
+      - name: Generate SBOM (SPDX JSON)
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          path: src
+          format: spdx-json
+          output-file: dist/${{ github.event.inputs.tag || github.ref_name }}.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
       - name: Compute checksums
         run: |
           cd dist
           sha256sum -- * > SHA256SUMS
+
+      # Build provenance for every published asset: the archives, the SBOM
+      # and SHA256SUMS. Runs BEFORE the release exists, so a failure here
+      # ships nothing and a re-run starts clean rather than leaving an
+      # immutable release without attestations.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*
 
       # Create as DRAFT first, upload assets, THEN publish. The org
       # enforces "immutable releases", which means a release is locked the
@@ -292,7 +323,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --draft \
             --title "$TAG" \
-            --notes "Binary build for $TAG. Cross-platform binaries + SHA256SUMS. Verify with: sha256sum -c SHA256SUMS" \
+            --notes "Binary build for $TAG. Cross-platform binaries, an SPDX SBOM and SHA256SUMS. Verify with: sha256sum -c SHA256SUMS, and check provenance with: gh attestation verify <file> --repo $GITHUB_REPOSITORY" \
             -- *
 
           echo "→ publishing release $TAG (becomes immutable)"
