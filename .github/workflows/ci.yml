@@ -41,7 +41,7 @@ jobs:
   # catches std usage; the bare-metal target proves true core+alloc portability.
   no-std:
     name: resq-dsa no_std
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.USE_SELF_HOSTED == 'true' && fromJSON('["self-hosted","linux","x64","zima"]') || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -58,7 +58,7 @@ jobs:
 
   required:
     name: required
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.USE_SELF_HOSTED == 'true' && fromJSON('["self-hosted","linux","x64","zima"]') || 'ubuntu-latest' }}
     needs: [rust, no-std]
     if: always()
     steps:
