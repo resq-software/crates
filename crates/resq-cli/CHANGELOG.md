@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0](https://github.com/resq-software/crates/releases/tag/resq-cli-v0.5.0) - 2026-10-01
+
+### Fixed
+
+- *(copyright)* Find headers anywhere, and never silently relicense ([#236](https://github.com/resq-software/crates/pull/236))
+
+### Miscellaneous
+
+- *(compliance)* Release SBOMs and provenance, security policy, SPDX headers ([#229](https://github.com/resq-software/crates/pull/229))
+
+
+
 ## [0.4.7](https://github.com/resq-software/crates/releases/tag/resq-cli-v0.4.7) - 2026-09-22
 
 ### Fixed
