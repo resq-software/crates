@@ -186,7 +186,7 @@ crates/
 
 ### Prerequisites
 
-- **Rust:** Latest stable toolchain via `rustup` (pinned in `rust-toolchain.toml`). Edition 2021.
+- **Rust:** Exact toolchain version pinned in `rust-toolchain.toml` (rustup installs it on demand). Not `stable` — CI treats clippy warnings as errors, so a floating channel would let a new release's lints break unrelated pull requests. Edition 2021.
 - **Nix (optional):** For reproducible development environments, use `nix develop`.
 - **Docker (optional):** For containerized builds and deployment tools.
 

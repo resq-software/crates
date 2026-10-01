@@ -14,7 +14,7 @@ All crates live under the `crates/` directory:
 - `crates/resq-perf/` — Performance dashboard (`resq-perf`).
 
 ## Shared Standards
-- **Runtime**: Rust (latest stable).
+- **Runtime**: Rust, pinned to an exact version in `rust-toolchain.toml` rather than tracking `stable`. CI runs clippy with `-D warnings`, so a floating channel lets a new release's lints red an unrelated PR with no warning. Bump the pin deliberately, adopting the new lints in the same change.
 - **UI Architecture**: Ratatui with a shared `resq-tui` theme and header/footer components.
 - **CLI Framework**: Clap v4 (derive mode).
 - **Safety**: Tools must be read-only by default (except `cleanup` and `copyright`).

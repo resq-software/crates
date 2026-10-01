@@ -1,3 +1,15 @@
 [toolchain]
-channel = "stable"
+# Pinned to an exact version, not "stable".
+#
+# CI runs clippy with `-D warnings`, so a floating channel lets every new Rust
+# release turn a brand-new lint into a red build on whatever unrelated pull
+# request happens to run next. Not hypothetical: 1.99.0 (2026-09-28) added
+# `clippy::assert_is_empty` and 14 pre-existing assertions became hard errors
+# overnight. Every run on 09-29 passed; the first run afterwards failed, on a PR
+# touching none of those files.
+#
+# Bumping this is a deliberate one-line change that adopts the new release's
+# lints with it, reviewed like anything else. Keep AGENTS.md and README.md in
+# step — both describe the toolchain policy.
+channel = "1.99.0"
 components = ["rustfmt", "clippy"]
