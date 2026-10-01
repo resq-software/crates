@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.19](https://github.com/resq-software/crates/releases/tag/resq-tui-v0.1.19) - 2026-10-01
+
+### Fixed
+
+- *(lint)* Satisfy clippy::assert_is_empty (new in Rust 1.99) ([#237](https://github.com/resq-software/crates/pull/237))
+
+### Miscellaneous
+
+- *(compliance)* Release SBOMs and provenance, security policy, SPDX headers ([#229](https://github.com/resq-software/crates/pull/229))
+
+
+
 ## [0.1.18](https://github.com/resq-software/crates/releases/tag/resq-tui-v0.1.18) - 2026-09-22
 
 ### Fixed
