@@ -60,6 +60,18 @@ pub struct CopyrightArgs {
     #[arg(long)]
     pub check: bool,
 
+    /// Replace a header that carries a different licence from `--license`.
+    ///
+    /// Separate from `--force` on purpose. `--force` means "rewrite even if
+    /// the header already looks right"; this means "change which licence this
+    /// file is under", which is a legal act rather than a formatting one, and
+    /// is irreversible in any copy already distributed. Without it a file
+    /// whose existing licence is recognised-and-different, or cannot be
+    /// classified at all, is reported and left untouched — including
+    /// third-party notices the repository does not own.
+    #[arg(long)]
+    pub relicense: bool,
+
     /// Print detailed processing info.
     ///
     /// Short form only, and carrying its own arg id, for the reason spelled out
@@ -960,7 +972,49 @@ fn process_file(
         return Ok(());
     }
 
-    // Decide whether we need to rewrite this file.
+    // A file that already carries a header under a DIFFERENT licence is never
+    // rewritten without `--relicense`, and neither `--force` nor an author
+    // mismatch is sufficient.
+    //
+    // This is a correctness guard, not caution. Previously any mismatch —
+    // including an author mismatch alone — triggered a rewrite, and when the
+    // existing licence was unrecognised the rebuild fell back to
+    // `args.license`. Run with no flags at all, that turned
+    //
+    //     # Copyright (c) 2026 ResQ. All Rights Reserved.   (proprietary)
+    //     # Copyright (c) 2019 Some Third Party ... MIT License
+    //
+    // into Apache-2.0 headers attributed to `--author`, destroying a third
+    // party's copyright notice. The tool called it "Migrated".
+    //
+    // Two distinct refusals, because "a licence I recognise and it is not
+    // ours" and "a header I cannot classify" need different reporting:
+    //   - recognised and different  -> would relicense
+    //   - present but unrecognised  -> cannot prove a rewrite is safe
+    // Treating an unclassifiable header as absent is how the second case got
+    // silently overwritten.
+    if already_has_header && !args.relicense {
+        let foreign = match detected_license {
+            Some(detected) if detected != args.license => Some(detected),
+            None => Some("unrecognised"),
+            Some(_) => None,
+        };
+        if let Some(detected) = foreign {
+            println!(
+                "Refusing to rewrite ({} header, target {}): {}",
+                detected,
+                args.license,
+                path.display()
+            );
+            eprintln!("   pass --relicense to change it deliberately");
+            stats.skipped += 1;
+            return Ok(());
+        }
+    }
+
+    // Decide whether we need to rewrite this file. Reaching here means either
+    // there is no header, or its licence matches the target — so an author
+    // normalisation cannot change the licence.
     let needs_rewrite = !already_has_header       // no header yet
         || args.force                              // explicit force
         || is_mismatch; // wrong license OR wrong author

@@ -61,6 +61,94 @@ fn has_header(dir: &Path, name: &str) -> bool {
         .contains("Copyright")
 }
 
+/// A third-party licence must never be rewritten, and `--force` is not enough.
+///
+/// Before the `--relicense` gate, running with NO flags turned
+/// `Copyright (c) 2019 Some Third Party ... MIT License` into an Apache-2.0
+/// header attributed to `--author`, destroying the third party's notice. The
+/// trigger was the AUTHOR mismatch, not the licence: MIT was recognised so the
+/// licence check passed, but any mismatch rewrote, and the rebuild used
+/// `--license`.
+#[test]
+fn a_third_party_licence_is_never_rewritten_without_relicense() {
+    let tmp = init_repo();
+    let mit = "# Copyright (c) 2019 Some Third Party\n#\n\
+               # Permission is hereby granted, free of charge ... MIT License\n\
+               def g(): pass\n";
+    let path = tmp.path().join("vendored.py");
+
+    for args in [
+        vec!["copyright", "vendored.py"],
+        vec!["copyright", "--force", "vendored.py"],
+    ] {
+        std::fs::write(&path, mit).expect("write fixture");
+        let out = resq(tmp.path(), &args);
+        assert!(out.status.success(), "resq copyright failed for {args:?}");
+        assert_eq!(
+            std::fs::read_to_string(&path).expect("read back"),
+            mit,
+            "third-party header was rewritten by {args:?}"
+        );
+    }
+
+    // The deliberate act still works.
+    std::fs::write(&path, mit).expect("write fixture");
+    let out = resq(tmp.path(), &["copyright", "--relicense", "vendored.py"]);
+    assert!(out.status.success());
+    let after = std::fs::read_to_string(&path).expect("read back");
+    assert!(
+        after.contains("Apache License"),
+        "--relicense should have replaced the header, got:\n{after}"
+    );
+}
+
+/// An existing header whose licence cannot be classified is left alone.
+///
+/// A proprietary notice matches the copyright regex but no licence
+/// fingerprint, so `detect_header_license` returns `None`. That used to read
+/// as "no licence to conflict with", and the rebuild fell back to
+/// `--license apache-2.0`, relicensing proprietary files by default.
+#[test]
+fn an_unrecognised_header_is_left_alone() {
+    let tmp = init_repo();
+    let proprietary = "# Copyright (c) 2026 ResQ. All Rights Reserved.\n#\n\
+                       # proprietary information. No license, express or implied.\n\
+                       def f(): pass\n";
+    let path = tmp.path().join("proprietary.py");
+    std::fs::write(&path, proprietary).expect("write fixture");
+
+    let out = resq(tmp.path(), &["copyright", "proprietary.py"]);
+    assert!(out.status.success());
+    assert_eq!(
+        std::fs::read_to_string(&path).expect("read back"),
+        proprietary,
+        "an unclassifiable header was overwritten"
+    );
+}
+
+/// The legitimate case must keep working: same licence, stale author.
+#[test]
+fn author_is_still_normalised_when_the_licence_matches() {
+    let tmp = init_repo();
+    let ours = "# Copyright 2026 ResQ\n#\n\
+                # Licensed under the Apache License, Version 2.0 (the \"License\");\n\
+                def h(): pass\n";
+    let path = tmp.path().join("ours.py");
+    std::fs::write(&path, ours).expect("write fixture");
+
+    let out = resq(tmp.path(), &["copyright", "ours.py"]);
+    assert!(out.status.success());
+    let after = std::fs::read_to_string(&path).expect("read back");
+    assert!(
+        after.contains("ResQ Systems, Inc."),
+        "author normalisation regressed, got:\n{after}"
+    );
+    assert!(
+        after.contains("Apache License"),
+        "licence must be preserved, got:\n{after}"
+    );
+}
+
 /// A header deep inside a long file must be found, not duplicated.
 ///
 /// `has_header` once looked only at the first 20 lines. A `CHANGELOG.md` keeps
