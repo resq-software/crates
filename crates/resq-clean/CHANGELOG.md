@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.27](https://github.com/resq-software/crates/releases/tag/resq-clean-v0.1.27) - 2026-10-01
+
+### Miscellaneous
+
+- *(compliance)* Release SBOMs and provenance, security policy, SPDX headers ([#229](https://github.com/resq-software/crates/pull/229))
+
+
+
 ## [0.1.26](https://github.com/resq-software/crates/releases/tag/resq-clean-v0.1.26) - 2026-09-22
 
 ### Fixed
