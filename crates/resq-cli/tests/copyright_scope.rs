@@ -123,6 +123,52 @@ fn relicense_replaces_an_unclassifiable_header_that_already_matches_author() {
     );
 }
 
+/// A holder name containing a prose-ish word must round-trip unchanged.
+///
+/// The prose cut that stops `Licensed under …` becoming the author was once a
+/// bare `" see "` marker, which also matches holder names: `John See Smith` was
+/// captured as `John`, so `--check` reported a mismatch and a normal run
+/// rewrote the header — every time, with no steady state reachable. The marker
+/// now requires licence context (a URL or a licence-file reference).
+#[test]
+fn a_holder_name_containing_see_round_trips_unchanged() {
+    let tmp = init_repo();
+    let header = "# Copyright 2026 John See Smith\n#\n\
+                  # Licensed under the Apache License, Version 2.0 (the \"License\");\n\
+                  def f(): pass\n";
+    let path = tmp.path().join("see.py");
+    std::fs::write(&path, header).expect("write fixture");
+
+    // `--check` must not report a mismatch.
+    let out = resq(
+        tmp.path(),
+        &[
+            "copyright",
+            "--check",
+            "--author",
+            "John See Smith",
+            "see.py",
+        ],
+    );
+    assert!(
+        out.status.success(),
+        "--check flagged a correct header: {}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+
+    // And a normal run must leave it alone.
+    let out = resq(
+        tmp.path(),
+        &["copyright", "--author", "John See Smith", "see.py"],
+    );
+    assert!(out.status.success());
+    assert_eq!(
+        std::fs::read_to_string(&path).expect("read back"),
+        header,
+        "a correct header was rewritten because the holder contains \"See\""
+    );
+}
+
 /// A third-party licence must never be rewritten, and `--force` is not enough.
 ///
 /// Before the `--relicense` gate, running with NO flags turned

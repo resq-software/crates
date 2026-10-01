@@ -452,12 +452,9 @@ fn detect_header_author(content: &str) -> Option<String> {
     // and that value is WRITTEN BACK into files as the author. It is the more
     // dangerous of the two capture defects precisely because it reads as almost
     // plausible in a diff, where a stray trailing period looks obviously wrong.
-    let lower = raw.to_ascii_lowercase();
-    let raw = PROSE_MARKERS
-        .iter()
-        .filter_map(|m| lower.find(m))
-        .min()
-        .map_or(raw, |cut| &raw[..cut]);
+    let raw = PROSE_RE
+        .find(raw)
+        .map_or(raw, |m| raw.get(..m.start()).unwrap_or(raw));
 
     // Strip "All rights reserved" boilerplate (case-insensitive).
     let lower = raw.to_ascii_lowercase();
@@ -488,16 +485,21 @@ fn detect_header_author(content: &str) -> Option<String> {
 }
 
 /// Licence prose that can follow the holder on the same line. The capture is cut
-/// at the earliest of these.
-static PROSE_MARKERS: &[&str] = &[
-    " licensed under",
-    " licence:",
-    " license:",
-    " spdx-",
-    " see ",
-    " http://",
-    " https://",
-];
+/// at the earliest match.
+///
+/// Every alternative requires licence CONTEXT, not merely a suggestive word. An
+/// earlier version listed a bare `" see "`, which also matches holder names:
+/// `--author "John See Smith"` was captured as `John`, reported as a mismatch by
+/// `--check`, and rewritten on every normal run — a header that could never
+/// reach a steady state. `see` now counts only when followed by a URL or a
+/// licence-file reference.
+#[allow(clippy::expect_used)]
+static PROSE_RE: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
+    Regex::new(
+        r"(?i)\s(?:licensed under|licen[cs]e:|spdx-|https?://|see\s+(?:https?://|LICEN[CS]E|COPYING))",
+    )
+    .expect("Static regex pattern is valid")
+});
 
 /// Abbreviations whose trailing period belongs to the name, not the sentence.
 static LEGAL_SUFFIXES: &[&str] = &["inc", "corp", "ltd", "co", "llc", "plc", "gmbh"];
