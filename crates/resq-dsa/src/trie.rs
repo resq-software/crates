@@ -277,7 +277,7 @@ mod tests {
 
     #[test]
     fn rabin_karp_no_match() {
-        assert!(rabin_karp("hello", "xyz").is_empty());
+        assert_eq!(rabin_karp("hello", "xyz"), [] as [usize; 0]);
     }
 
     #[test]
@@ -308,7 +308,7 @@ mod tests {
     fn starts_with_no_matches() {
         let mut t = Trie::new();
         t.insert("hello");
-        assert!(t.starts_with("xyz").is_empty());
+        assert_eq!(t.starts_with("xyz"), [] as [std::string::String; 0]);
     }
 
     #[test]
@@ -325,7 +325,7 @@ mod tests {
     #[test]
     fn rabin_karp_empty_pattern() {
         // Empty pattern should return empty results.
-        assert!(rabin_karp("hello", "").is_empty());
+        assert_eq!(rabin_karp("hello", ""), [] as [usize; 0]);
     }
 
     #[test]
@@ -335,7 +335,7 @@ mod tests {
 
     #[test]
     fn rabin_karp_pattern_longer_than_text() {
-        assert!(rabin_karp("hi", "longer pattern").is_empty());
+        assert_eq!(rabin_karp("hi", "longer pattern"), [] as [usize; 0]);
     }
 
     #[test]
@@ -355,8 +355,8 @@ mod tests {
         let mut t = Trie::new();
         t.insert("apple");
         t.insert("banana");
-        assert!(t.starts_with("cherry").is_empty());
-        assert!(t.starts_with("app1").is_empty());
+        assert_eq!(t.starts_with("cherry"), [] as [std::string::String; 0]);
+        assert_eq!(t.starts_with("app1"), [] as [std::string::String; 0]);
     }
 
     #[test]
@@ -373,8 +373,8 @@ mod tests {
 
     #[test]
     fn rabin_karp_no_matches() {
-        assert!(rabin_karp("abcdefgh", "xyz").is_empty());
-        assert!(rabin_karp("aaaa", "b").is_empty());
+        assert_eq!(rabin_karp("abcdefgh", "xyz"), [] as [usize; 0]);
+        assert_eq!(rabin_karp("aaaa", "b"), [] as [usize; 0]);
     }
 
     #[test]
@@ -385,13 +385,13 @@ mod tests {
 
     #[test]
     fn rabin_karp_empty_text() {
-        assert!(rabin_karp("", "pattern").is_empty());
+        assert_eq!(rabin_karp("", "pattern"), [] as [usize; 0]);
     }
 
     #[test]
     fn rabin_karp_both_empty() {
         // Empty pattern always returns empty
-        assert!(rabin_karp("", "").is_empty());
+        assert_eq!(rabin_karp("", ""), [] as [usize; 0]);
     }
 
     #[test]

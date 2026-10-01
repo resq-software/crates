@@ -417,7 +417,9 @@ mod tests {
     #[test]
     #[allow(clippy::const_is_empty)]
     fn spinner_frames_not_empty() {
-        assert!(!SPINNER_FRAMES.is_empty());
+        // Annotated for the same reason as spinner.rs: a bare `[]` against a
+        // `&[&str]` cannot be inferred (E0282).
+        assert_ne!(SPINNER_FRAMES, [] as [&str; 0]);
     }
 
     #[test]
