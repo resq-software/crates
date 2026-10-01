@@ -60,6 +60,18 @@ pub struct CopyrightArgs {
     #[arg(long)]
     pub check: bool,
 
+    /// Replace a header that carries a different licence from `--license`.
+    ///
+    /// Separate from `--force` on purpose. `--force` means "rewrite even if
+    /// the header already looks right"; this means "change which licence this
+    /// file is under", which is a legal act rather than a formatting one, and
+    /// is irreversible in any copy already distributed. Without it a file
+    /// whose existing licence is recognised-and-different, or cannot be
+    /// classified at all, is reported and left untouched — including
+    /// third-party notices the repository does not own.
+    #[arg(long)]
+    pub relicense: bool,
+
     /// Print detailed processing info.
     ///
     /// Short form only, and carrying its own arg id, for the reason spelled out
@@ -353,10 +365,26 @@ static COMMENT_START_RE: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|
     Regex::new(r"^\s*(#|--|//|;;)").expect("Static regex pattern is valid")
 });
 
-/// Check whether the first N lines of `content` contain a copyright header.
+/// Check whether `content` contains a copyright header, anywhere in the file.
+///
+/// Deliberately unbounded. A fixed prefix window cannot work here: a
+/// `CHANGELOG.md` keeps its header below the `# Changelog` title, and every
+/// release inserts a section *above* it, so the header drifts downwards
+/// without limit. Once past the window it becomes invisible and a second
+/// header is prepended — then a third, once per release.
+///
+/// Not hypothetical. Against the previous 20-line window the header crossed
+/// the boundary after two releases, and each rewrite is a change inside
+/// `crates/<pkg>/`, which release-plz reads as releasable and cuts a version
+/// for. Six releases were published that way in one night.
+///
+/// The trade is explicit: scanning the whole file means prose that merely
+/// mentions a copyright year reads as "already has a header" (`HEADER_RE` is
+/// only `copyright <4 digits>`), so the tool declines to add one. That
+/// failure is bounded and visible — `--check` reports the file. The windowed
+/// failure was unbounded and silent.
 fn has_header(content: &str) -> bool {
-    let head: String = content.lines().take(20).collect::<Vec<_>>().join("\n");
-    HEADER_RE.is_match(&head)
+    HEADER_RE.is_match(content)
 }
 
 // ── License Detection ───────────────────────────────────────────────────────
@@ -399,10 +427,20 @@ static AUTHOR_RE: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
 
 /// Detect the author name in the existing header.
 /// Returns the trimmed author string, or `None` if no recognisable
-/// `Copyright YEAR <author>` line is found in the first 20 lines.
+/// `Copyright YEAR <author>` line is found.
+///
+/// Searches the whole file, matching [`has_header`] and
+/// [`detect_header_license`]. All three must use the same span or detection and
+/// classification disagree.
+///
+/// Scoping this to "from wherever `has_header` matched" was considered and is a
+/// behavioural no-op: `HEADER_RE` matches everything `AUTHOR_RE` matches (plus
+/// `SPDX-License-Identifier:`), so its first match is always at or before
+/// `AUTHOR_RE`'s and slicing from it can never exclude that match. Genuinely
+/// confining the author to the header's own comment block is a larger change
+/// than a start offset, and is not attempted here.
 fn detect_header_author(content: &str) -> Option<String> {
-    let head: String = content.lines().take(20).collect::<Vec<_>>().join("\n");
-    let caps = AUTHOR_RE.captures(&head)?;
+    let caps = AUTHOR_RE.captures(content)?;
     let raw = caps.get(1)?.as_str().trim();
 
     // Strip "All rights reserved" boilerplate (case-insensitive). Preserve
@@ -425,11 +463,14 @@ fn detect_header_author(content: &str) -> Option<String> {
 
 /// Detect which license the existing header uses.
 /// Returns a SPDX-style identifier or `None` if unrecognised.
+///
+/// Scans the whole file, matching [`has_header`] and [`detect_header_author`].
+/// All three must use the same span or detection and classification disagree.
 fn detect_header_license(content: &str) -> Option<&'static str> {
-    let head: String = content.lines().take(30).collect::<Vec<_>>().join("\n");
+    let head = content;
 
     // Prefer an explicit SPDX tag if present.
-    if let Some(caps) = SPDX_RE.captures(&head) {
+    if let Some(caps) = SPDX_RE.captures(head) {
         let id = caps.get(1).map_or("", |m| m.as_str());
         return match id.to_ascii_lowercase().as_str() {
             "apache-2.0" => Some("apache-2.0"),
@@ -441,16 +482,16 @@ fn detect_header_license(content: &str) -> Option<&'static str> {
     }
 
     // Fingerprint-based detection.
-    if APACHE_FP.is_match(&head) {
+    if APACHE_FP.is_match(head) {
         return Some("apache-2.0");
     }
-    if MIT_FP.is_match(&head) {
+    if MIT_FP.is_match(head) {
         return Some("mit");
     }
-    if GPL3_FP.is_match(&head) {
+    if GPL3_FP.is_match(head) {
         return Some("gpl-3.0");
     }
-    if BSD3_FP.is_match(&head) {
+    if BSD3_FP.is_match(head) {
         return Some("bsd-3-clause");
     }
     None
@@ -936,9 +977,63 @@ fn process_file(
         return Ok(());
     }
 
-    // Decide whether we need to rewrite this file.
+    // A file that already carries a header under a DIFFERENT licence is never
+    // rewritten without `--relicense`, and neither `--force` nor an author
+    // mismatch is sufficient.
+    //
+    // This is a correctness guard, not caution. Previously any mismatch —
+    // including an author mismatch alone — triggered a rewrite, and when the
+    // existing licence was unrecognised the rebuild fell back to
+    // `args.license`. Run with no flags at all, that turned
+    //
+    //     # Copyright (c) 2026 ResQ. All Rights Reserved.   (proprietary)
+    //     # Copyright (c) 2019 Some Third Party ... MIT License
+    //
+    // into Apache-2.0 headers attributed to `--author`, destroying a third
+    // party's copyright notice. The tool called it "Migrated".
+    //
+    // Two distinct refusals, because "a licence I recognise and it is not
+    // ours" and "a header I cannot classify" need different reporting:
+    //   - recognised and different  -> would relicense
+    //   - present but unrecognised  -> cannot prove a rewrite is safe
+    // Treating an unclassifiable header as absent is how the second case got
+    // silently overwritten.
+    if already_has_header && !args.relicense {
+        let foreign = match detected_license {
+            Some(detected) if detected != args.license => Some(detected),
+            None => Some("unrecognised"),
+            Some(_) => None,
+        };
+        if let Some(detected) = foreign {
+            println!(
+                "Refusing to rewrite ({} header, target {}): {}",
+                detected,
+                args.license,
+                path.display()
+            );
+            eprintln!("   pass --relicense to change it deliberately");
+            stats.skipped += 1;
+            return Ok(());
+        }
+    }
+
+    // An explicit `--relicense` on a header that is not already the target
+    // licence is itself a reason to rewrite. Without this the flag could be
+    // accepted and then silently do nothing: a proprietary header already
+    // naming `--author` has `detected_license == None`, so the licence
+    // mismatch is false and the author mismatch is false too, leaving
+    // `needs_rewrite` false. The refusal above is bypassed, the command exits
+    // 0, and the header is still proprietary.
+    let relicense_requested =
+        args.relicense && already_has_header && detected_license != Some(args.license.as_str());
+
+    // Decide whether we need to rewrite this file. Reaching here means there is
+    // no header, its licence matches the target, or relicensing was asked for
+    // explicitly — so an author normalisation cannot change the licence by
+    // accident.
     let needs_rewrite = !already_has_header       // no header yet
         || args.force                              // explicit force
+        || relicense_requested                     // explicit licence change
         || is_mismatch; // wrong license OR wrong author
 
     if !needs_rewrite {

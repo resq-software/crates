@@ -61,6 +61,203 @@ fn has_header(dir: &Path, name: &str) -> bool {
         .contains("Copyright")
 }
 
+/// A correct header followed by body text that quotes a copyright line must be
+/// left alone.
+///
+/// Guards the whole-file author search: the header is the first
+/// `Copyright <year>` in the file, so a later quotation cannot win. This passes
+/// both before and after the author-scoping change that was considered and
+/// dropped — kept because it pins the property that matters.
+#[test]
+fn a_quoted_copyright_line_in_the_body_does_not_trigger_a_rewrite() {
+    let tmp = init_repo();
+    let correct = "# Copyright 2026 ResQ Systems, Inc.\n#\n\
+                   # Licensed under the Apache License, Version 2.0 (the \"License\");\n\n\
+                   def f(): pass\n\
+                   # changelog quote: Copyright 2019 Some Third Party\n";
+    let path = tmp.path().join("ok.py");
+    std::fs::write(&path, correct).expect("write fixture");
+
+    let out = resq(tmp.path(), &["copyright", "ok.py"]);
+    assert!(out.status.success());
+    assert_eq!(
+        std::fs::read_to_string(&path).expect("read back"),
+        correct,
+        "a correct file was rewritten because body text supplied the author"
+    );
+}
+
+/// `--relicense` must actually replace an unclassifiable header.
+///
+/// A proprietary notice that already names `--author` has no recognised
+/// licence and no author mismatch, so `needs_rewrite` stayed false. The flag
+/// was accepted, the refusal was bypassed, the command exited 0 — and the
+/// header was still proprietary. A flag that silently does nothing is worse
+/// than one that errors.
+#[test]
+fn relicense_replaces_an_unclassifiable_header_that_already_matches_author() {
+    let tmp = init_repo();
+    let proprietary = "# Copyright (c) 2026 ResQ Systems, Inc. All Rights Reserved.\n#\n\
+                       # proprietary. No license, express or implied.\n\
+                       def f(): pass\n";
+    let path = tmp.path().join("prop.py");
+
+    // Without the flag it is still refused.
+    std::fs::write(&path, proprietary).expect("write fixture");
+    assert!(resq(tmp.path(), &["copyright", "prop.py"]).status.success());
+    assert_eq!(
+        std::fs::read_to_string(&path).expect("read back"),
+        proprietary,
+        "refusal regressed"
+    );
+
+    // With it, the replacement actually happens.
+    std::fs::write(&path, proprietary).expect("write fixture");
+    assert!(resq(tmp.path(), &["copyright", "--relicense", "prop.py"])
+        .status
+        .success());
+    let after = std::fs::read_to_string(&path).expect("read back");
+    assert!(
+        after.contains("Apache License") && !after.contains("All Rights Reserved"),
+        "--relicense silently did nothing, got:\n{after}"
+    );
+}
+
+/// A third-party licence must never be rewritten, and `--force` is not enough.
+///
+/// Before the `--relicense` gate, running with NO flags turned
+/// `Copyright (c) 2019 Some Third Party ... MIT License` into an Apache-2.0
+/// header attributed to `--author`, destroying the third party's notice. The
+/// trigger was the AUTHOR mismatch, not the licence: MIT was recognised so the
+/// licence check passed, but any mismatch rewrote, and the rebuild used
+/// `--license`.
+#[test]
+fn a_third_party_licence_is_never_rewritten_without_relicense() {
+    let tmp = init_repo();
+    let mit = "# Copyright (c) 2019 Some Third Party\n#\n\
+               # Permission is hereby granted, free of charge ... MIT License\n\
+               def g(): pass\n";
+    let path = tmp.path().join("vendored.py");
+
+    for args in [
+        vec!["copyright", "vendored.py"],
+        vec!["copyright", "--force", "vendored.py"],
+    ] {
+        std::fs::write(&path, mit).expect("write fixture");
+        let out = resq(tmp.path(), &args);
+        assert!(out.status.success(), "resq copyright failed for {args:?}");
+        assert_eq!(
+            std::fs::read_to_string(&path).expect("read back"),
+            mit,
+            "third-party header was rewritten by {args:?}"
+        );
+    }
+
+    // The deliberate act still works.
+    std::fs::write(&path, mit).expect("write fixture");
+    let out = resq(tmp.path(), &["copyright", "--relicense", "vendored.py"]);
+    assert!(out.status.success());
+    let after = std::fs::read_to_string(&path).expect("read back");
+    assert!(
+        after.contains("Apache License"),
+        "--relicense should have replaced the header, got:\n{after}"
+    );
+}
+
+/// An existing header whose licence cannot be classified is left alone.
+///
+/// A proprietary notice matches the copyright regex but no licence
+/// fingerprint, so `detect_header_license` returns `None`. That used to read
+/// as "no licence to conflict with", and the rebuild fell back to
+/// `--license apache-2.0`, relicensing proprietary files by default.
+#[test]
+fn an_unrecognised_header_is_left_alone() {
+    let tmp = init_repo();
+    let proprietary = "# Copyright (c) 2026 ResQ. All Rights Reserved.\n#\n\
+                       # proprietary information. No license, express or implied.\n\
+                       def f(): pass\n";
+    let path = tmp.path().join("proprietary.py");
+    std::fs::write(&path, proprietary).expect("write fixture");
+
+    let out = resq(tmp.path(), &["copyright", "proprietary.py"]);
+    assert!(out.status.success());
+    assert_eq!(
+        std::fs::read_to_string(&path).expect("read back"),
+        proprietary,
+        "an unclassifiable header was overwritten"
+    );
+}
+
+/// The legitimate case must keep working: same licence, stale author.
+#[test]
+fn author_is_still_normalised_when_the_licence_matches() {
+    let tmp = init_repo();
+    let ours = "# Copyright 2026 ResQ\n#\n\
+                # Licensed under the Apache License, Version 2.0 (the \"License\");\n\
+                def h(): pass\n";
+    let path = tmp.path().join("ours.py");
+    std::fs::write(&path, ours).expect("write fixture");
+
+    let out = resq(tmp.path(), &["copyright", "ours.py"]);
+    assert!(out.status.success());
+    let after = std::fs::read_to_string(&path).expect("read back");
+    assert!(
+        after.contains("ResQ Systems, Inc."),
+        "author normalisation regressed, got:\n{after}"
+    );
+    assert!(
+        after.contains("Apache License"),
+        "licence must be preserved, got:\n{after}"
+    );
+}
+
+/// A header deep inside a long file must be found, not duplicated.
+///
+/// `has_header` once looked only at the first 20 lines. A `CHANGELOG.md` keeps
+/// its header under the `# Changelog` title and every release inserts a
+/// section above it, so after two releases the header sat past line 20, became
+/// invisible, and a second one was prepended — then once per release after
+/// that. Each rewrite is a change inside `crates/<pkg>/`, which release-plz
+/// reads as releasable, so the duplication drove a release loop.
+///
+/// Line 40 of a ~190-line file is well past any plausible fixed window.
+#[test]
+fn header_deep_in_a_long_changelog_is_not_duplicated() {
+    use std::fmt::Write as _;
+
+    let tmp = init_repo();
+    let mut content = String::from("# Changelog\n\n");
+    for i in 0..37 {
+        writeln!(content, "- entry {i}").expect("write to String");
+    }
+    content.push_str(
+        "<!--\n  Copyright 2026 ResQ Systems, Inc.\n\n  \
+         Licensed under the Apache License, Version 2.0 (the \"License\");\n-->\n\n",
+    );
+    for i in 0..150 {
+        writeln!(content, "- older entry {i}").expect("write to String");
+    }
+
+    let path = tmp.path().join("CHANGELOG.md");
+    std::fs::write(&path, &content).expect("write changelog");
+    assert_eq!(
+        content.matches("Copyright").count(),
+        1,
+        "fixture should start with exactly one header"
+    );
+
+    let out = resq(tmp.path(), &["copyright", "CHANGELOG.md"]);
+    assert!(out.status.success(), "resq copyright failed");
+
+    let after = std::fs::read_to_string(&path).expect("read back");
+    assert_eq!(
+        after.matches("Copyright").count(),
+        1,
+        "header at line 40 went unrecognised, so a second was prepended:\n{}",
+        after.lines().take(8).collect::<Vec<_>>().join("\n")
+    );
+}
+
 #[test]
 fn named_paths_leave_every_other_file_alone() {
     let tmp = init_repo();
