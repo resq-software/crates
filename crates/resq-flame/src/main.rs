@@ -622,7 +622,7 @@ mod tests {
         let profile = make_profile(vec![make_node(1, "(root)", vec![])], vec![]);
 
         let folded = cpuprofile_to_folded(&profile);
-        assert!(folded.is_empty());
+        assert_eq!(folded, "");
     }
 
     #[test]

@@ -824,7 +824,7 @@ mod tests {
 
         assert!(report.size_bytes > 0);
         assert!(!report.sections.is_empty());
-        assert!(!report.format.is_empty());
+        assert_ne!(report.format, "");
     }
 
     #[test]
