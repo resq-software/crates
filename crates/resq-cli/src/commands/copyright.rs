@@ -353,10 +353,26 @@ static COMMENT_START_RE: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|
     Regex::new(r"^\s*(#|--|//|;;)").expect("Static regex pattern is valid")
 });
 
-/// Check whether the first N lines of `content` contain a copyright header.
+/// Check whether `content` contains a copyright header, anywhere in the file.
+///
+/// Deliberately unbounded. A fixed prefix window cannot work here: a
+/// `CHANGELOG.md` keeps its header below the `# Changelog` title, and every
+/// release inserts a section *above* it, so the header drifts downwards
+/// without limit. Once past the window it becomes invisible and a second
+/// header is prepended — then a third, once per release.
+///
+/// Not hypothetical. Against the previous 20-line window the header crossed
+/// the boundary after two releases, and each rewrite is a change inside
+/// `crates/<pkg>/`, which release-plz reads as releasable and cuts a version
+/// for. Six releases were published that way in one night.
+///
+/// The trade is explicit: scanning the whole file means prose that merely
+/// mentions a copyright year reads as "already has a header" (`HEADER_RE` is
+/// only `copyright <4 digits>`), so the tool declines to add one. That
+/// failure is bounded and visible — `--check` reports the file. The windowed
+/// failure was unbounded and silent.
 fn has_header(content: &str) -> bool {
-    let head: String = content.lines().take(20).collect::<Vec<_>>().join("\n");
-    HEADER_RE.is_match(&head)
+    HEADER_RE.is_match(content)
 }
 
 // ── License Detection ───────────────────────────────────────────────────────
@@ -399,10 +415,15 @@ static AUTHOR_RE: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
 
 /// Detect the author name in the existing header.
 /// Returns the trimmed author string, or `None` if no recognisable
-/// `Copyright YEAR <author>` line is found in the first 20 lines.
+/// `Copyright YEAR <author>` line is found anywhere in the file.
+///
+/// Scans the whole file for the same reason as [`has_header`], and — just as
+/// importantly — so that the two agree. They previously used 20 and
+/// `detect_header_license` used 30, so a header at line 25 was invisible to
+/// detection yet visible to classification: the tool would prepend a second
+/// header while simultaneously reporting the first one's licence.
 fn detect_header_author(content: &str) -> Option<String> {
-    let head: String = content.lines().take(20).collect::<Vec<_>>().join("\n");
-    let caps = AUTHOR_RE.captures(&head)?;
+    let caps = AUTHOR_RE.captures(content)?;
     let raw = caps.get(1)?.as_str().trim();
 
     // Strip "All rights reserved" boilerplate (case-insensitive). Preserve
@@ -425,11 +446,14 @@ fn detect_header_author(content: &str) -> Option<String> {
 
 /// Detect which license the existing header uses.
 /// Returns a SPDX-style identifier or `None` if unrecognised.
+///
+/// Scans the whole file, matching [`has_header`] and [`detect_header_author`].
+/// All three must use the same span or detection and classification disagree.
 fn detect_header_license(content: &str) -> Option<&'static str> {
-    let head: String = content.lines().take(30).collect::<Vec<_>>().join("\n");
+    let head = content;
 
     // Prefer an explicit SPDX tag if present.
-    if let Some(caps) = SPDX_RE.captures(&head) {
+    if let Some(caps) = SPDX_RE.captures(head) {
         let id = caps.get(1).map_or("", |m| m.as_str());
         return match id.to_ascii_lowercase().as_str() {
             "apache-2.0" => Some("apache-2.0"),
@@ -441,16 +465,16 @@ fn detect_header_license(content: &str) -> Option<&'static str> {
     }
 
     // Fingerprint-based detection.
-    if APACHE_FP.is_match(&head) {
+    if APACHE_FP.is_match(head) {
         return Some("apache-2.0");
     }
-    if MIT_FP.is_match(&head) {
+    if MIT_FP.is_match(head) {
         return Some("mit");
     }
-    if GPL3_FP.is_match(&head) {
+    if GPL3_FP.is_match(head) {
         return Some("gpl-3.0");
     }
-    if BSD3_FP.is_match(&head) {
+    if BSD3_FP.is_match(head) {
         return Some("bsd-3-clause");
     }
     None

@@ -61,6 +61,54 @@ fn has_header(dir: &Path, name: &str) -> bool {
         .contains("Copyright")
 }
 
+/// A header deep inside a long file must be found, not duplicated.
+///
+/// `has_header` once looked only at the first 20 lines. A `CHANGELOG.md` keeps
+/// its header under the `# Changelog` title and every release inserts a
+/// section above it, so after two releases the header sat past line 20, became
+/// invisible, and a second one was prepended — then once per release after
+/// that. Each rewrite is a change inside `crates/<pkg>/`, which release-plz
+/// reads as releasable, so the duplication drove a release loop.
+///
+/// Line 40 of a ~190-line file is well past any plausible fixed window.
+#[test]
+fn header_deep_in_a_long_changelog_is_not_duplicated() {
+    let tmp = init_repo();
+
+    use std::fmt::Write as _;
+
+    let mut content = String::from("# Changelog\n\n");
+    for i in 0..37 {
+        writeln!(content, "- entry {i}").expect("write to String");
+    }
+    content.push_str(
+        "<!--\n  Copyright 2026 ResQ Systems, Inc.\n\n  \
+         Licensed under the Apache License, Version 2.0 (the \"License\");\n-->\n\n",
+    );
+    for i in 0..150 {
+        writeln!(content, "- older entry {i}").expect("write to String");
+    }
+
+    let path = tmp.path().join("CHANGELOG.md");
+    std::fs::write(&path, &content).expect("write changelog");
+    assert_eq!(
+        content.matches("Copyright").count(),
+        1,
+        "fixture should start with exactly one header"
+    );
+
+    let out = resq(tmp.path(), &["copyright", "CHANGELOG.md"]);
+    assert!(out.status.success(), "resq copyright failed");
+
+    let after = std::fs::read_to_string(&path).expect("read back");
+    assert_eq!(
+        after.matches("Copyright").count(),
+        1,
+        "header at line 40 went unrecognised, so a second was prepended:\n{}",
+        after.lines().take(8).collect::<Vec<_>>().join("\n")
+    );
+}
+
 #[test]
 fn named_paths_leave_every_other_file_alone() {
     let tmp = init_repo();
