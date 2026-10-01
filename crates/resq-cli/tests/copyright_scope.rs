@@ -161,10 +161,9 @@ fn author_is_still_normalised_when_the_licence_matches() {
 /// Line 40 of a ~190-line file is well past any plausible fixed window.
 #[test]
 fn header_deep_in_a_long_changelog_is_not_duplicated() {
-    let tmp = init_repo();
-
     use std::fmt::Write as _;
 
+    let tmp = init_repo();
     let mut content = String::from("# Changelog\n\n");
     for i in 0..37 {
         writeln!(content, "- entry {i}").expect("write to String");
