@@ -132,7 +132,11 @@ mod tests {
 
     #[test]
     fn spinner_frames_are_not_empty() {
-        assert!(!SPINNER_FRAMES.is_empty());
+        // `[] as [&str; 0]` rather than a bare `[]`: SPINNER_FRAMES is a
+        // `&[&str]`, so an unannotated empty array literal cannot be inferred
+        // (E0282). clippy::assert_is_empty suggests the bare form, which does
+        // not compile here.
+        assert_ne!(SPINNER_FRAMES, [] as [&str; 0]);
     }
 
     #[test]
