@@ -61,6 +61,68 @@ fn has_header(dir: &Path, name: &str) -> bool {
         .contains("Copyright")
 }
 
+/// A correct header followed by body text that quotes a copyright line must be
+/// left alone.
+///
+/// Guards the whole-file author search: the header is the first
+/// `Copyright <year>` in the file, so a later quotation cannot win. This passes
+/// both before and after the author-scoping change that was considered and
+/// dropped — kept because it pins the property that matters.
+#[test]
+fn a_quoted_copyright_line_in_the_body_does_not_trigger_a_rewrite() {
+    let tmp = init_repo();
+    let correct = "# Copyright 2026 ResQ Systems, Inc.\n#\n\
+                   # Licensed under the Apache License, Version 2.0 (the \"License\");\n\n\
+                   def f(): pass\n\
+                   # changelog quote: Copyright 2019 Some Third Party\n";
+    let path = tmp.path().join("ok.py");
+    std::fs::write(&path, correct).expect("write fixture");
+
+    let out = resq(tmp.path(), &["copyright", "ok.py"]);
+    assert!(out.status.success());
+    assert_eq!(
+        std::fs::read_to_string(&path).expect("read back"),
+        correct,
+        "a correct file was rewritten because body text supplied the author"
+    );
+}
+
+/// `--relicense` must actually replace an unclassifiable header.
+///
+/// A proprietary notice that already names `--author` has no recognised
+/// licence and no author mismatch, so `needs_rewrite` stayed false. The flag
+/// was accepted, the refusal was bypassed, the command exited 0 — and the
+/// header was still proprietary. A flag that silently does nothing is worse
+/// than one that errors.
+#[test]
+fn relicense_replaces_an_unclassifiable_header_that_already_matches_author() {
+    let tmp = init_repo();
+    let proprietary = "# Copyright (c) 2026 ResQ Systems, Inc. All Rights Reserved.\n#\n\
+                       # proprietary. No license, express or implied.\n\
+                       def f(): pass\n";
+    let path = tmp.path().join("prop.py");
+
+    // Without the flag it is still refused.
+    std::fs::write(&path, proprietary).expect("write fixture");
+    assert!(resq(tmp.path(), &["copyright", "prop.py"]).status.success());
+    assert_eq!(
+        std::fs::read_to_string(&path).expect("read back"),
+        proprietary,
+        "refusal regressed"
+    );
+
+    // With it, the replacement actually happens.
+    std::fs::write(&path, proprietary).expect("write fixture");
+    assert!(resq(tmp.path(), &["copyright", "--relicense", "prop.py"])
+        .status
+        .success());
+    let after = std::fs::read_to_string(&path).expect("read back");
+    assert!(
+        after.contains("Apache License") && !after.contains("All Rights Reserved"),
+        "--relicense silently did nothing, got:\n{after}"
+    );
+}
+
 /// A third-party licence must never be rewritten, and `--force` is not enough.
 ///
 /// Before the `--relicense` gate, running with NO flags turned

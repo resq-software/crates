@@ -427,13 +427,18 @@ static AUTHOR_RE: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
 
 /// Detect the author name in the existing header.
 /// Returns the trimmed author string, or `None` if no recognisable
-/// `Copyright YEAR <author>` line is found anywhere in the file.
+/// `Copyright YEAR <author>` line is found.
 ///
-/// Scans the whole file for the same reason as [`has_header`], and — just as
-/// importantly — so that the two agree. They previously used 20 and
-/// `detect_header_license` used 30, so a header at line 25 was invisible to
-/// detection yet visible to classification: the tool would prepend a second
-/// header while simultaneously reporting the first one's licence.
+/// Searches the whole file, matching [`has_header`] and
+/// [`detect_header_license`]. All three must use the same span or detection and
+/// classification disagree.
+///
+/// Scoping this to "from wherever `has_header` matched" was considered and is a
+/// behavioural no-op: `HEADER_RE` matches everything `AUTHOR_RE` matches (plus
+/// `SPDX-License-Identifier:`), so its first match is always at or before
+/// `AUTHOR_RE`'s and slicing from it can never exclude that match. Genuinely
+/// confining the author to the header's own comment block is a larger change
+/// than a start offset, and is not attempted here.
 fn detect_header_author(content: &str) -> Option<String> {
     let caps = AUTHOR_RE.captures(content)?;
     let raw = caps.get(1)?.as_str().trim();
@@ -1012,11 +1017,23 @@ fn process_file(
         }
     }
 
-    // Decide whether we need to rewrite this file. Reaching here means either
-    // there is no header, or its licence matches the target — so an author
-    // normalisation cannot change the licence.
+    // An explicit `--relicense` on a header that is not already the target
+    // licence is itself a reason to rewrite. Without this the flag could be
+    // accepted and then silently do nothing: a proprietary header already
+    // naming `--author` has `detected_license == None`, so the licence
+    // mismatch is false and the author mismatch is false too, leaving
+    // `needs_rewrite` false. The refusal above is bypassed, the command exits
+    // 0, and the header is still proprietary.
+    let relicense_requested =
+        args.relicense && already_has_header && detected_license != Some(args.license.as_str());
+
+    // Decide whether we need to rewrite this file. Reaching here means there is
+    // no header, its licence matches the target, or relicensing was asked for
+    // explicitly — so an author normalisation cannot change the licence by
+    // accident.
     let needs_rewrite = !already_has_header       // no header yet
         || args.force                              // explicit force
+        || relicense_requested                     // explicit licence change
         || is_mismatch; // wrong license OR wrong author
 
     if !needs_rewrite {
