@@ -67,9 +67,18 @@ commit_parsers = [
     { message = "^style", group = "Styling" },
     { message = "^build", group = "Build" },
     { message = "^ci", group = "CI" },
-    # Filter out release commits and chore commits to reduce noise
-    { message = "^chore\\(release\\)", skip = true },
-    { message = "^chore: release", skip = true },
+    # Skip release-plz's own release commits, or it releases its own releases.
+    #
+    # ONE pattern, because enumerating shapes is what broke this twice. The two
+    # earlier entries were `^chore\(release\)` and `^chore: release`, and
+    # release-plz now writes a PACKAGE scope — `chore(resq-cli): release v0.5.2`
+    # — which neither matched. Every release commit then counted as a releasable
+    # change and cut another release: v0.5.1 was published twice (#240, #241),
+    # and #242 existed only to release the commit that released v0.5.1.
+    #
+    # The scope group is optional and its contents unconstrained, so a different
+    # crate name — or no scope at all — stays matched without another edit.
+    { message = "^chore(\\([^)]*\\))?: release", skip = true },
     { message = "^chore\\(deps\\)", group = "Dependencies" },
     { message = "^chore", group = "Miscellaneous" },
 ]
