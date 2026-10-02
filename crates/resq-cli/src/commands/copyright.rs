@@ -443,10 +443,20 @@ fn detect_header_author(content: &str) -> Option<String> {
     let caps = AUTHOR_RE.captures(content)?;
     let raw = caps.get(1)?.as_str().trim();
 
-    // Strip "All rights reserved" boilerplate (case-insensitive). Preserve
-    // the trailing period of legal suffixes like "Inc." / "Corp." — only
-    // strip a separator comma or whitespace between the name and the
-    // boilerplate (e.g. BSD's "Acme, All rights reserved").
+    // `AUTHOR_RE` captures to end of line, so cut licence prose following the
+    // holder on the same line before anything else. Without this a Markdown
+    // line yields a holder of
+    //
+    //     ResQ. Licensed under the [Apache License, Version 2.0](./LICENSE)
+    //
+    // and that value is WRITTEN BACK into files as the author. It is the more
+    // dangerous of the two capture defects precisely because it reads as almost
+    // plausible in a diff, where a stray trailing period looks obviously wrong.
+    let raw = PROSE_RE
+        .find(raw)
+        .map_or(raw, |m| raw.get(..m.start()).unwrap_or(raw));
+
+    // Strip "All rights reserved" boilerplate (case-insensitive).
     let lower = raw.to_ascii_lowercase();
     let cleaned = if let Some(idx) = lower.rfind("all rights reserved") {
         raw[..idx].trim_end().trim_end_matches(',').trim_end()
@@ -454,12 +464,45 @@ fn detect_header_author(content: &str) -> Option<String> {
         raw.trim_end_matches(|c: char| c == ',' || c.is_whitespace())
     };
 
+    // A trailing period is sentence punctuation unless it abbreviates a legal
+    // suffix. `ResQ. All Rights Reserved.` means the holder is `ResQ`, so
+    // keeping the period filed it separately from plain `ResQ` and split one
+    // holder into two across an entire census. `Inc.` and `Corp.` keep theirs.
+    let cleaned = cleaned.strip_suffix('.').map_or(cleaned, |stem| {
+        let last = stem.rsplit([' ', ',']).next().unwrap_or("");
+        if LEGAL_SUFFIXES.iter().any(|s| last.eq_ignore_ascii_case(s)) {
+            cleaned
+        } else {
+            stem.trim_end()
+        }
+    });
+
     if cleaned.is_empty() {
         None
     } else {
         Some(cleaned.to_string())
     }
 }
+
+/// Licence prose that can follow the holder on the same line. The capture is cut
+/// at the earliest match.
+///
+/// Every alternative requires licence CONTEXT, not merely a suggestive word. An
+/// earlier version listed a bare `" see "`, which also matches holder names:
+/// `--author "John See Smith"` was captured as `John`, reported as a mismatch by
+/// `--check`, and rewritten on every normal run — a header that could never
+/// reach a steady state. `see` now counts only when followed by a URL or a
+/// licence-file reference.
+#[allow(clippy::expect_used)]
+static PROSE_RE: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
+    Regex::new(
+        r"(?i)\s(?:licensed under|licen[cs]e:|spdx-|https?://|see\s+(?:https?://|LICEN[CS]E|COPYING))",
+    )
+    .expect("Static regex pattern is valid")
+});
+
+/// Abbreviations whose trailing period belongs to the name, not the sentence.
+static LEGAL_SUFFIXES: &[&str] = &["inc", "corp", "ltd", "co", "llc", "plc", "gmbh"];
 
 /// Detect which license the existing header uses.
 /// Returns a SPDX-style identifier or `None` if unrecognised.
@@ -1183,6 +1226,55 @@ pub fn run(args: &CopyrightArgs) -> Result<()> {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
+
+    /// A trailing period is sentence punctuation unless it abbreviates a legal
+    /// suffix.
+    ///
+    /// `ResQ. All Rights Reserved.` means the holder is `ResQ`. Keeping the
+    /// period filed it separately from plain `ResQ`, which split one holder into
+    /// two across a whole-org census — 825 files in one repo looked like a
+    /// different copyright holder when they were correctly stamped and only
+    /// badly read.
+    #[test]
+    fn a_sentence_period_is_dropped_but_a_legal_suffix_keeps_its_own() {
+        assert_eq!(
+            detect_header_author("# Copyright 2026 ResQ. All Rights Reserved.\nx = 1"),
+            Some("ResQ".to_string())
+        );
+        assert_eq!(
+            detect_header_author("# Copyright 2026 ResQ Systems, Inc. All Rights Reserved.\nx = 1"),
+            Some("ResQ Systems, Inc.".to_string())
+        );
+        assert_eq!(
+            detect_header_author("// Copyright 2024 Acme Corp. All rights reserved\nfn f() {}"),
+            Some("Acme Corp.".to_string())
+        );
+    }
+
+    /// Licence prose on the same line must not become the author.
+    ///
+    /// `AUTHOR_RE` captures to end of line, so a Markdown licence line yielded
+    /// `ResQ. Licensed under the [Apache License, Version 2.0](./LICENSE)` as a
+    /// holder — and that value is written back into files. It is the more
+    /// dangerous of the two capture defects because it reads as almost plausible
+    /// in a diff, whereas a stray trailing period looks obviously wrong.
+    #[test]
+    fn licence_prose_after_the_holder_is_not_captured_as_the_author() {
+        assert_eq!(
+            detect_header_author(
+                "Copyright 2026 ResQ. Licensed under the [Apache License, Version 2.0](./LICENSE)\n"
+            ),
+            Some("ResQ".to_string())
+        );
+        assert_eq!(
+            detect_header_author("# Copyright 2026 ResQ Software SPDX-License-Identifier: MIT\n"),
+            Some("ResQ Software".to_string())
+        );
+        assert_eq!(
+            detect_header_author("# Copyright 2026 ResQ see https://example.invalid/terms\n"),
+            Some("ResQ".to_string())
+        );
+    }
 
     #[test]
     fn managed_hooks_are_skipped() {
