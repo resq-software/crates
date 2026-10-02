@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.1](https://github.com/resq-software/crates/releases/tag/resq-cli-v0.5.1) - 2026-10-02
+
+### Fixed
+
+- *(copyright)* Stop licence prose and sentence periods becoming the author ([#239](https://github.com/resq-software/crates/pull/239))
+
+
+
 ## [0.5.0](https://github.com/resq-software/crates/releases/tag/resq-cli-v0.5.0) - 2026-10-01
 
 ### Fixed
