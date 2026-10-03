@@ -1009,7 +1009,13 @@ pub async fn run(args: PreCommitArgs) -> Result<()> {
         || !crossterm::tty::IsTty::is_tty(&io::stderr())
         || std::env::var_os("GIT_INDEX_FILE").is_some()
     {
-        return run_plain(&root, args.skip_audit, args.skip_format, args.max_file_size);
+        return run_plain(
+            &root,
+            args.skip_audit,
+            args.skip_format,
+            args.skip_versioning,
+            args.max_file_size,
+        );
     }
 
     let steps = build_step_list(args.skip_audit, args.skip_format, args.skip_versioning);
@@ -1146,8 +1152,36 @@ pub async fn run(args: PreCommitArgs) -> Result<()> {
     Ok(())
 }
 
-fn run_plain(root: &Path, skip_audit: bool, skip_format: bool, max_file_size: u64) -> Result<()> {
+/// The non-interactive path: `--no-tui`, a non-TTY stderr, or a git hook
+/// invocation (git sets `GIT_INDEX_FILE` for every hook).
+///
+/// `skip_versioning` is accepted but cannot be honoured, and that is deliberate
+/// rather than an oversight. The versioning step is a PROMPT — it sends
+/// `StepMsg::PromptChangeset` and blocks on the reply — so it cannot run
+/// without a terminal, and running it from a hook would block every commit,
+/// CI included.
+///
+/// What was wrong was staying silent about it. The canonical pre-commit hook
+/// advertises a `versioning` token (template lines 35 and 57, "changeset /
+/// version prompt"), prints a skip banner for it, and translates it into
+/// `--skip-versioning` — and that flag was then dropped at the call site,
+/// because a hook invocation always lands here. The check therefore never ran
+/// during a commit under any configuration, while three layers of UI said it
+/// could be skipped.
+///
+/// Now it says so. `--skip-versioning` suppresses the notice, because then not
+/// running it is exactly what was asked for.
+fn run_plain(
+    root: &Path,
+    skip_audit: bool,
+    skip_format: bool,
+    skip_versioning: bool,
+    max_file_size: u64,
+) -> Result<()> {
     eprintln!("🔍 ResQ Pre-commit Checks\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    if !skip_versioning {
+        eprintln!("  ⏭️  Versioning / Changeset — not run (needs an interactive terminal)");
+    }
     let mut fail = false;
     macro_rules! run {
         ($name:expr, $fn:expr) => {{
