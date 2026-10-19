@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.28](https://github.com/resq-software/crates/releases/tag/resq-perf-v0.1.28) - 2026-10-19
+
+### Fixed
+
+- *(resq-perf)* Drop unused procfs, object and addr2line dependencies ([#256](https://github.com/resq-software/crates/pull/256))
+
+
+
 ## [0.1.27](https://github.com/resq-software/crates/releases/tag/resq-perf-v0.1.27) - 2026-10-01
 
 ### Miscellaneous
