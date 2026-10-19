@@ -34,6 +34,7 @@ HSKIP_HARD_FAIL=1  # gating hook: refuse to run rather than guess at intent
 #   force-push                  pre-push     force-push guard on main/master
 #   branch-name                 pre-push     branch naming convention
 #   notify                      post-merge / post-checkout  lockfile drift notices
+#   ticket                      prepare-commit-msg  branch ticket-ref prefix
 #   local                       any hook     the repo-local local-<hook> override
 #
 # There is deliberately NO 'secrets' token. The secret scan is the compensating
@@ -56,6 +57,7 @@ hskip_usage() {
      force-push              pre-push     force-push guard on main/master
      branch-name             pre-push     branch naming convention
      notify                  post-merge / post-checkout  lockfile drift notices
+     ticket                  prepare-commit-msg  branch ticket-ref prefix
      local                   any hook     repo-local local-<hook> override
    Examples:  GIT_HOOKS_SKIP=audit         GIT_HOOKS_SKIP=audit,format
    The secret scan has no token of its own. It is reachable only via
@@ -76,7 +78,7 @@ if [ -n "${GIT_HOOKS_SKIP:-}" ]; then
             0|false|no|off|none)
                 : ;;  # explicit "skip nothing"; the old guard disabled the
                       # whole hook for these, which nobody ever intended
-            audit|format|versioning|msg-format|wip-guard|force-push|branch-name|notify|local)
+            audit|format|versioning|msg-format|wip-guard|force-push|branch-name|notify|ticket|local)
                 HSKIP_SET="${HSKIP_SET}${hskip_tok} " ;;
             secret|secrets|secret-scan|secrets-scan)
                 HSKIP_BAD="${HSKIP_BAD}${hskip_tok} "
@@ -184,7 +186,17 @@ fi
 # checking `main` (skipped) instead of the branch actually being created.
 ZERO_SHA="0000000000000000000000000000000000000000"
 ALLOWED_PATTERN="^(feat|fix|docs|chore|refactor|test|ci|perf|release)/.*$"
-SKIP_BRANCHES="^(main|master|dev|develop|staging|production|changeset-release/.*)$"
+# Bot namespaces are exempt: nobody can rename a branch a bot creates, so
+# enforcing the naming convention there only blocks legitimate pushes to those
+# branches — a maintainer resolving a dependabot conflict, or a lockfile-sync
+# workflow pushing from a reused checkout that still has core.hooksPath set.
+# `changeset-release/` was already exempt for exactly this reason; dependabot
+# and renovate were simply never added.
+#
+# Upstreamed from the monorepo, which patched its own copy after hitting this.
+# Leaving it local guaranteed every repo would re-invent the same three words,
+# so it belongs in the canonical template.
+SKIP_BRANCHES="^(main|master|dev|develop|staging|production|changeset-release/.*|dependabot/.*|renovate/.*)$"
 
 # Only iterate when git actually gave us refs — an empty $PUSH_REFS would
 # otherwise feed one blank line through and be read as a record. Skipped
