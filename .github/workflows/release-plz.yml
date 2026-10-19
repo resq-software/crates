@@ -71,7 +71,7 @@ jobs:
         with:
           toolchain: stable
       - id: release-plz
-        uses: MarcoIeni/release-plz-action@b8d6b54b02889ff2ae2bb82e8b57c3a8fc1683a5 # v0.5.139
+        uses: MarcoIeni/release-plz-action@8921286633dfa0c4020f7f30bd1c14fe19cbb10e # v0.5.142
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
@@ -186,7 +186,7 @@ jobs:
           echo "missing=${missing# }" >> "$GITHUB_OUTPUT"
 
       - name: Generate SBOM (SPDX JSON)
-        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           path: .
           format: spdx-json
