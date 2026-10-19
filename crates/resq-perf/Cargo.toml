@@ -39,11 +39,6 @@ serde_json = { workspace = true }
 tokio = { workspace = true }
 reqwest = { workspace = true }
 
-# Binary analysis and process info (Memory Profiler)
-object = "0.40"
-procfs = "0.18"
-addr2line = "0.27"
-
 # Shared TUI components
 resq-tui = { workspace = true }
 
