@@ -1180,7 +1180,7 @@ fn run_plain(
 ) -> Result<()> {
     eprintln!("🔍 ResQ Pre-commit Checks\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     if !skip_versioning {
-        eprintln!("  ⏭️  Versioning / Changeset — not run (needs an interactive terminal)");
+        eprintln!("  ⏭️  Versioning / Changeset — not run in plain mode (it runs only in the interactive dashboard)");
     }
     let mut fail = false;
     macro_rules! run {
