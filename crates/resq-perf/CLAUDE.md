@@ -7,7 +7,6 @@ Real-time performance diagnostic dashboard for ResQ services. Polls service `/st
 - Runtime: Rust
 - UI: Ratatui + Crossterm
 - HTTP Client: `reqwest`
-- Metrics: `procfs`, `object`, `addr2line` (Memory Profiler)
 - Async runtime: Tokio
 - Shared UI: `resq-tui`
 
