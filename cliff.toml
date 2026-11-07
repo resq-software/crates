@@ -37,8 +37,21 @@ body = """
         - {% if commit.scope %}*({{ commit.scope }})* {% endif %}{{ commit.message | upper_first }}\
             {% if commit.github.pr_number %} ([#{{ commit.github.pr_number }}]({{ self::remote_url() }}/pull/{{ commit.github.pr_number }})){% endif %}\
     {% endfor %}
-{% endfor %}\n
+{% endfor %}
 """
+# No literal `\n` after that final `{% endfor %}`. With it, a rendered section
+# ended in `\n\n\n` — the content plus TWO blank lines. release-plz prepends a
+# rendered section above the existing one, so every release inserted two blank
+# lines at the join, and the file then never matched a fresh render: release-plz
+# proposed a "fix" that added two more. PR #245 was exactly that — a +2/-0 diff
+# of nothing but whitespace — and it would have recurred indefinitely.
+#
+# Without it the section ends `\n\n`, one blank line and the ordinary Markdown
+# separator, and re-rendering is byte-identical. Verified against this config
+# with git-cliff 2.14.2: two consecutive renders hash the same.
+#
+# This is the SECOND pump behind one loop. #243 stopped release commits being
+# counted as releasable content; this stops the whitespace churn left behind.
 footer = ""
 trim = true
 
