@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.3](https://github.com/resq-software/crates/releases/tag/resq-cli-v0.5.3) - 2026-11-09
+
+### Fixed
+
+- *(hooks)* Give prepare-commit-msg skip control, and stop lying about versioning ([#248](https://github.com/resq-software/crates/pull/248))
+
+
+
 ## [0.5.2](https://github.com/resq-software/crates/releases/tag/resq-cli-v0.5.2) - 2026-10-02
 
 
