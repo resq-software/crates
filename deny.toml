@@ -17,7 +17,18 @@ all-features = true
 
 [advisories]
 version = 2
-ignore = []
+ignore = [
+    # RUSTSEC-2026-0543 -- the chrono crate is unmaintained. The advisory is
+    # about maintenance status, not a specific defect, and it says outright
+    # that no safe upgrade exists: every published version is affected. The
+    # only real resolutions are migrating to `jiff` or `time`, or accepting
+    # it. chrono reaches this workspace through resq-cli and resq-flame only.
+    #
+    # Ignored rather than left failing so the advisories check keeps reporting
+    # findings that CAN be acted on. Migration is tracked separately -- remove
+    # this entry when it lands, or when chrono is adopted upstream.
+    "RUSTSEC-2026-0543",
+]
 
 [licenses]
 version = 2
