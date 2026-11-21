@@ -137,9 +137,7 @@ fn build_prompt(
     scope: Option<&str>,
     count: u8,
 ) -> (String, String) {
-    let scope_hint = scope
-        .map(|s| format!("\nSuggested scope: {s}"))
-        .unwrap_or_default();
+    let scope_hint = scope.map_or_default(|s| format!("\nSuggested scope: {s}"));
 
     let system = format!(
         "You are a commit message generator for a project that uses Conventional Commits.\n\
