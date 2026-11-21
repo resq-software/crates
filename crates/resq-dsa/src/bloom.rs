@@ -91,7 +91,6 @@ impl BloomFilter {
         let m = (-(capacity as f64) * error_rate.ln()
             / (core::f64::consts::LN_2 * core::f64::consts::LN_2))
             .ceil() as usize;
-        #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
         #[allow(
             clippy::cast_precision_loss,
             clippy::cast_possible_truncation,

@@ -13,3 +13,11 @@
 # limitations under the License.
 
 # Add vulnerability exemptions here as [[IgnoredVulns]]
+
+# chrono is unmaintained (RUSTSEC-2026-0543) and no fixed version exists --
+# the advisory states that all versions are affected. Kept in step with the
+# matching entry in deny.toml so the two scanners agree on what is accepted;
+# remove both together when the migration to jiff/time lands.
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0543"
+reason = "chrono is unmaintained and has no fixed version. Migration tracked separately; see deny.toml."

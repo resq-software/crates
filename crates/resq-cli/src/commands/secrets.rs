@@ -673,11 +673,7 @@ fn should_skip(path: &Path, ignore_matcher: &crate::gitignore::Matcher) -> bool 
     }
 
     let path_str = path.to_string_lossy();
-    if path_str.contains(".env.example") || path_str.contains(".env.sample") {
-        return true;
-    }
-
-    false
+    path_str.contains(".env.example") || path_str.contains(".env.sample")
 }
 
 fn is_binary(content: &[u8]) -> bool {
@@ -827,8 +823,7 @@ pub async fn run(args: SecretsArgs) -> Result<()> {
         println!("📜 Scanning git history{}...", {
             args.since
                 .as_deref()
-                .map(|s| format!(" since {s}"))
-                .unwrap_or_default()
+                .map_or_default(|s| format!(" since {s}"))
         });
 
         let diffs = get_history_diffs(&root, args.since.as_deref());
