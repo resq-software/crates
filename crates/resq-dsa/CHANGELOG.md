@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.6](https://github.com/resq-software/crates/releases/tag/resq-dsa-v0.1.6) - 2026-11-23
+
+### CI
+
+- Enable the private-name guard on this repo ([#264](https://github.com/resq-software/crates/pull/264))
+
+
 ## [0.1.5](https://github.com/resq-software/crates/releases/tag/resq-dsa-v0.1.5) - 2026-10-01
 
 ### Fixed
